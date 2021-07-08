@@ -1,0 +1,55 @@
+{
+  "name": "@harvest-finance/harvest-strategy-polygon",
+  "version": "1.0.0",
+  "description": "Harvest Finance: Polygon (Matic). The Hardhat environment is configured to use Mainnet fork by default and provides templates and utilities for strategy development and testing.",
+  "main": "hardhat.config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: please run tests individually\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harvest-finance/harvest-strategy-polygon.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/harvest-finance/harvest-strategy-polygon/issues"
+  },
+  "homepage": "https://github.com/harvest-finance/harvest-strategy-polygon#readme",
+  "devDependencies": {
+    "@ethereum-waffle/chai": "^3.2.2",
+    "@nomiclabs/hardhat-ethers": "2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.1",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@openzeppelin/contracts": "^3.4.0",
+    "@openzeppelin/contracts-upgradeable": "^3.4.0",
+    "@openzeppelin/test-helpers": "^0.5.10",
+    "@typechain/ethers-v5": "^5.0.0",
+    "@types/chai": "^4.2.14",
+    "@types/mocha": "^8.2.0",
+    "@types/node": "^14.14.22",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "chai": "^4.2.0",
+    "dotenv": "^8.2.0",
+    "ethers": "^5.0.26",
+    "hardhat": "^2.0.6",
+    "hardhat-deploy": "^0.7.0-beta.44",
+    "hardhat-deploy-ethers": "^0.3.0-beta.7",
+    "hardhat-spdx-license-identifier": "^2.0.3",
+    "hardhat-typechain": "^0.3.4",
+    "mocha": "^8.3.2",
+    "solc": "0.6.12",
+    "solidity-coverage": "^0.7.16",
+    "ts-generator": "^0.1.1",
+    "ts-node": "^9.1.1",
+    "typechain": "^4.0.1",
+    "typescript": "^4.1.3"
+  },
+  "dependencies": {
+    "@nomiclabs/hardhat-truffle5": "^2.0.0",
+    "prompt": "^1.1.0"
+  }
+}
