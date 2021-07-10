@@ -1,5 +1,4 @@
 // Utilities
-const addresses = require("../test-config.js");
 const Utils = require("../utilities/Utils.js");
 const {
   impersonates,
@@ -9,19 +8,25 @@ const {
   addLiquidity
 } = require("../utilities/hh-utils.js");
 
+const addresses = require("../test-config.js");
 const { send } = require("@openzeppelin/test-helpers");
 const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
-const Strategy = artifacts.require("QuickStrategyMainnet_ETH_USDT");
+//const Strategy = artifacts.require("");
+const Strategy = artifacts.require("QuickStrategyMainnet_USDC_ETH");
 
-describe("Matic ETH/USDT", function() {
+
+// Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
+describe("Polygon Mainnet Quickswap USDC/ETH", function() {
   let accounts;
+
+  // external contracts
   let underlying;
 
   // external setup
-  let token0Addr = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619";
-  let token1Addr = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
+  let token0Addr = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; //usdc
+  let token1Addr = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"; //eth
 
   // parties in the protocol
   let governance;
@@ -36,7 +41,7 @@ describe("Matic ETH/USDT", function() {
   let strategy;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0xF6422B997c7F54D1c6a6e103bcb1499EeA0a7046");
+    underlying = await IERC20.at("0x853Ee4b2A13f8a742d64C8F088bE7bA2131f670d");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -53,7 +58,7 @@ describe("Matic ETH/USDT", function() {
 
     await swapMaticToToken (
       farmer1,
-      [addresses.WMATIC, token0.address, token1.address],
+      [addresses.WMATIC, token1.address],
       "1000" + "000000000000000000",
       addresses.QuickRouter
     );
@@ -102,12 +107,11 @@ describe("Matic ETH/USDT", function() {
       let farmerOldBalance = new BigNumber(await underlying.balanceOf(farmer1));
       await depositVault(farmer1, underlying, vault, farmerBalance);
 
-      let farmerVaultShare = new BigNumber(await vault.balanceOf(farmer1)).toFixed();
-      let vaultERC20 = await IERC20.at(vault.address);
-
       // Using half days is to simulate how we doHardwork in the real world
+      // The rewards are time based and Hardhat propagates the chain with a block time of 16s
+      // So we have 225 blocks per hour, 2700 blocks per 12 hours.
       let hours = 10;
-      let blocksPerHour = 2700;
+      let blocksPerHour = 200;
       let oldSharePrice;
       let newSharePrice;
       for (let i = 0; i < hours; i++) {
@@ -135,6 +139,7 @@ describe("Matic ETH/USDT", function() {
       console.log("APY:", (apy-1)*100, "%");
 
       await strategy.withdrawAllToVault({from:governance}); // making sure can withdraw all for a next switch
+
     });
   });
 });

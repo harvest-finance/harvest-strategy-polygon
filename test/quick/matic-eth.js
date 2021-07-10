@@ -14,11 +14,11 @@ const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
 //const Strategy = artifacts.require("");
-const Strategy = artifacts.require("QuickStrategyMainnet_ETH_MATIC");
+const Strategy = artifacts.require("QuickStrategyMainnet_MATIC_ETH");
 
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Polygon Mainnet Quickswap ETH/MATIC", function() {
+describe("Polygon Mainnet Quickswap MATIC/ETH", function() {
   let accounts;
 
   // external contracts
@@ -99,7 +99,7 @@ describe("Polygon Mainnet Quickswap ETH/MATIC", function() {
       // The rewards are time based and Hardhat propagates the chain with a block time of 16s
       // So we have 225 blocks per hour, 2700 blocks per 12 hours.
       let hours = 10;
-      let blocksPerHour = 2700;
+      let blocksPerHour = 200;
       let oldSharePrice;
       let newSharePrice;
       for (let i = 0; i < hours; i++) {
