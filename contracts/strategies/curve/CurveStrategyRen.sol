@@ -8,10 +8,10 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "../../base/interface/IVault.sol";
 import "../../base/upgradability/BaseUpgradeableStrategy.sol";
-import "../../base/interface/curve/ICurveDeposit_3token_underlying.sol";
+import "../../base/interface/curve/ICurveDeposit_2token_underlying.sol";
 import "../../base/interface/curve/Gauge.sol";
 
-contract CurveStrategyAave is BaseUpgradeableStrategy {
+contract CurveStrategyRen is BaseUpgradeableStrategy {
 
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
@@ -60,7 +60,7 @@ contract CurveStrategyAave is BaseUpgradeableStrategy {
       0, // sell floor
       12 hours // implementation change delay
     );
-    require(_depositArrayPosition < 3, "Deposit array position out of bounds");
+    require(_depositArrayPosition < 2, "Deposit array position out of bounds");
     _setDepositArrayPosition(_depositArrayPosition);
     _setCurveDeposit(_curveDeposit);
     _setDepositToken(_depositToken);
@@ -219,12 +219,12 @@ contract CurveStrategyAave is BaseUpgradeableStrategy {
     IERC20(depositToken()).safeApprove(curveDeposit(), 0);
     IERC20(depositToken()).safeApprove(curveDeposit(), tokenBalance);
 
-    uint256[3] memory depositArray;
+    uint256[2] memory depositArray;
     depositArray[depositArrayPosition()] = tokenBalance;
 
     // we can accept 0 as minimum, this will be called only by trusted roles
     uint256 minimum = 0;
-    ICurveDeposit_3token_underlying(curveDeposit()).add_liquidity(depositArray, minimum, true);
+    ICurveDeposit_2token_underlying(curveDeposit()).add_liquidity(depositArray, minimum, true);
   }
 
 

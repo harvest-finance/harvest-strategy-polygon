@@ -14,12 +14,12 @@ const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
 //const Strategy = artifacts.require("");
-const Strategy = artifacts.require("CurveStrategyAaveMainnet");
-const IDeposit = artifacts.require("ICurveDeposit_3token_underlying");
+const Strategy = artifacts.require("CurveStrategy3CryptoMainnet");
+const IDeposit = artifacts.require("ICurveDeposit_5token");
 
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Polygon Mainnet Curve Aave", function() {
+describe("Polygon Mainnet Curve 3Crypto", function() {
   let accounts;
 
   // external contracts
@@ -27,7 +27,7 @@ describe("Polygon Mainnet Curve Aave", function() {
 
   // external setup
   let usdc = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
-  let depositAddr = "0x445FE580eF8d70FF569aB36e80c647af338db351";
+  let depositAddr = "0x3FCD5De6A9fC8A99995c406c77DDa3eD7E406f81";
   let deposit;
 
   // parties in the protocol
@@ -43,7 +43,7 @@ describe("Polygon Mainnet Curve Aave", function() {
   let strategy;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171");
+    underlying = await IERC20.at("0x8096ac61db23291252574D49f036f0f9ed8ab390");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -58,7 +58,7 @@ describe("Polygon Mainnet Curve Aave", function() {
     farmerToken1Balance = await token1.balanceOf(farmer1);
     deposit = await IDeposit.at(depositAddr);
     await token1.approve(depositAddr, farmerToken1Balance, { from:farmer1});
-    await deposit.add_liquidity([0, farmerToken1Balance, 0], 0, true, {from:farmer1});
+    await deposit.add_liquidity([0, farmerToken1Balance, 0, 0, 0], 0, {from:farmer1});
     farmerBalance = await underlying.balanceOf(farmer1);
   }
 

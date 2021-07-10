@@ -14,20 +14,20 @@ const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
 //const Strategy = artifacts.require("");
-const Strategy = artifacts.require("CurveStrategyAaveMainnet");
-const IDeposit = artifacts.require("ICurveDeposit_3token_underlying");
+const Strategy = artifacts.require("CurveStrategyRenMainnet");
+const IDeposit = artifacts.require("ICurveDeposit_2token_underlying");
 
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Polygon Mainnet Curve Aave", function() {
+describe("Polygon Mainnet Curve Ren", function() {
   let accounts;
 
   // external contracts
   let underlying;
 
   // external setup
-  let usdc = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
-  let depositAddr = "0x445FE580eF8d70FF569aB36e80c647af338db351";
+  let wbtc = "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6";
+  let depositAddr = "0xC2d95EEF97Ec6C17551d45e77B590dc1F9117C67";
   let deposit;
 
   // parties in the protocol
@@ -43,12 +43,12 @@ describe("Polygon Mainnet Curve Aave", function() {
   let strategy;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171");
+    underlying = await IERC20.at("0xf8a57c1d3b9629b77b6726a042ca48990A84Fb49");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
   async function setupBalance(){
-    token1 = await IERC20.at(usdc);
+    token1 = await IERC20.at(wbtc);
     await swapMaticToToken (
       farmer1,
       [addresses.WMATIC, token1.address],
@@ -58,7 +58,7 @@ describe("Polygon Mainnet Curve Aave", function() {
     farmerToken1Balance = await token1.balanceOf(farmer1);
     deposit = await IDeposit.at(depositAddr);
     await token1.approve(depositAddr, farmerToken1Balance, { from:farmer1});
-    await deposit.add_liquidity([0, farmerToken1Balance, 0], 0, true, {from:farmer1});
+    await deposit.add_liquidity([farmerToken1Balance, 0], 0, true, {from:farmer1});
     farmerBalance = await underlying.balanceOf(farmer1);
   }
 
