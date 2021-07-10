@@ -14,20 +14,21 @@ const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
 //const Strategy = artifacts.require("");
-const Strategy = artifacts.require("SushiStrategyMainnet_ETH_USDT");
+const Strategy = artifacts.require("SushiStrategyMainnet_USDC_USDT");
 
 const sushiRouterAddress = "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506";
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Polygon Mainnet Sushiswap ETH/USDT", function() {
+describe("Polygon Mainnet Sushiswap USDC/USDT", function() {
   let accounts;
 
   // external contracts
   let underlying;
 
   // external setup
-  let token0Addr = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"; //eth
-  let token1Addr = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; //usdt
+  let token0Addr = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"; //usdt
+  let token1Addr = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; //USDC
+  let weth = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619";
 
   // parties in the protocol
   let governance;
@@ -46,7 +47,7 @@ describe("Polygon Mainnet Sushiswap ETH/USDT", function() {
   let farmerToken1Balance;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0xc2755915a85C6f6c1C0F3a86ac8C058F11Caa9C9");
+    underlying = await IERC20.at("0x4B1F1e2435A9C96f7330FAea190Ef6A7C8D70001");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -55,7 +56,7 @@ describe("Polygon Mainnet Sushiswap ETH/USDT", function() {
     token1 = await IERC20.at(token1Addr);
     await swapMaticToToken (
       farmer1,
-      [addresses.WMATIC, token0.address],
+      [addresses.WMATIC, weth, token0.address],
       "1000" + "000000000000000000",
       sushiRouterAddress
     );
@@ -63,7 +64,7 @@ describe("Polygon Mainnet Sushiswap ETH/USDT", function() {
 
     await swapMaticToToken (
       farmer1,
-      [addresses.WMATIC, token0.address, token1.address],
+      [addresses.WMATIC, weth, token1.address],
       "1000" + "000000000000000000",
       sushiRouterAddress
     );
@@ -78,9 +79,6 @@ describe("Polygon Mainnet Sushiswap ETH/USDT", function() {
       sushiRouterAddress
     );
     farmerBalance = await underlying.balanceOf(farmer1);
-
-    console.log("farmerBalance: ");
-    console.log(new BigNumber(farmerBalance).toFixed());
   }
 
   before(async function() {
@@ -103,8 +101,6 @@ describe("Polygon Mainnet Sushiswap ETH/USDT", function() {
       "governance": governance,
       "strategyArtifactIsUpgradable": true
     });
-
-    await strategy.setSellFloor(0, {from:governance});
 
     // whale send underlying to farmers
     await setupBalance();

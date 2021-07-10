@@ -1,5 +1,4 @@
 //SPDX-License-Identifier: Unlicense
-
 pragma solidity 0.6.12;
 
 import "@openzeppelin/contracts/math/Math.sol";
@@ -12,27 +11,27 @@ import "../upgradability/BaseUpgradeableStrategy.sol";
 import "./interface/IMiniChefV2.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IWETH.sol";
 
-
 contract MiniChefV2Strategy is BaseUpgradeableStrategy {
 
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
+  address public constant quickswapRouterV2 = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
   address public constant sushiswapRouterV2 = address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
+  address public constant weth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
 
   // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
   bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
   bytes32 internal constant _IS_LP_ASSET_SLOT = 0xc2f3dabf55b1bdda20d5cf5fcba9ba765dfc7c9dbaf28674ce46d43d60d58768;
-  bytes32 internal constant _SECOND_REWARD_TOKEN_SLOT = 0xd06e5f1f8ce4bdaf44326772fc9785917d444f120d759a01f1f440e0a42d67a3;
 
-  // this would be reset on each upgrade
-  mapping (address => address[]) public uniswapRoutes;
-  address[] public secondRewardRoute;
+  mapping (address => address[]) public WETH2deposit;
+  mapping (address => address[]) public reward2WETH;
+  mapping (address => bool) public useQuick;
+  address[] public rewardTokens;
 
   constructor() public BaseUpgradeableStrategy() {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
     assert(_IS_LP_ASSET_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.isLpAsset")) - 1));
-    assert(_SECOND_REWARD_TOKEN_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.secondRewardToken")) - 1));
   }
 
   function initializeBaseStrategy(
@@ -40,8 +39,6 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
     address _underlying,
     address _vault,
     address _rewardPool,
-    address _rewardToken,
-    address _secondRewardToken,
     uint256 _poolID,
     bool _isLpAsset
   ) public initializer {
@@ -51,7 +48,7 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
       _underlying,
       _vault,
       _rewardPool,
-      _rewardToken,
+      weth,
       80, // profit sharing numerator
       1000, // profit sharing denominator
       true, // sell
@@ -64,19 +61,16 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
     require(address(_lpt) == underlying(), "Pool Info does not match underlying");
     _setPoolId(_poolID);
 
-    _setSecondRewardToken(_secondRewardToken);
-
     if (_isLpAsset) {
       address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
       address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
 
       // these would be required to be initialized separately by governance
-      uniswapRoutes[uniLPComponentToken0] = new address[](0);
-      uniswapRoutes[uniLPComponentToken1] = new address[](0);
+      WETH2deposit[uniLPComponentToken0] = new address[](0);
+      WETH2deposit[uniLPComponentToken1] = new address[](0);
     } else {
-      uniswapRoutes[underlying()] = new address[](0);
+      WETH2deposit[underlying()] = new address[](0);
     }
-
     setBoolean(_IS_LP_ASSET_SLOT, _isLpAsset);
   }
 
@@ -100,10 +94,6 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
       if (bal != 0) {
           IMiniChefV2(rewardPool()).emergencyWithdraw(poolId(), address(this));
       }
-  }
-
-  function harvestReward() internal {
-      IMiniChefV2(rewardPool()).harvest(poolId(), address(this));
   }
 
   function unsalvagableTokens(address token) public view returns (bool) {
@@ -130,54 +120,81 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
   /*
   *   Resumes the ability to invest into the underlying reward pools
   */
-
   function continueInvesting() public onlyGovernance {
     _setPausedInvesting(false);
   }
 
-  function setLiquidationPath(address _token, address [] memory _route) public onlyGovernance {
-    uniswapRoutes[_token] = _route;
+  function setDepositLiquidationPath(address [] memory _route, bool _useQuick) public onlyGovernance {
+    require(_route[0] == weth, "Path should start with WETH");
+    if (isLpAsset()) {
+      address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
+      address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
+      require(_route[_route.length-1] == uniLPComponentToken0 || _route[_route.length-1] == uniLPComponentToken1, "Path should end with LP component");
+    } else {
+      require(_route[_route.length-1] == underlying(), "Path should end with underlying");
+    }
+    WETH2deposit[_route[_route.length-1]] = _route;
+    useQuick[_route[_route.length-1]] = _useQuick;
+  }
+
+  function setRewardLiquidationPath(address [] memory _route, bool _useQuick) public onlyGovernance {
+    require(_route[_route.length-1] == weth, "Path should end with WETH");
+    bool isReward = false;
+    for(uint256 i = 0; i < rewardTokens.length; i++){
+      if (_route[0] == rewardTokens[i]) {
+        isReward = true;
+      }
+    }
+    require(isReward, "Path should start with a rewardToken");
+    reward2WETH[_route[0]] = _route;
+    useQuick[_route[0]] = _useQuick;
+  }
+
+  function addRewardToken(address _token, address[] memory _path2WETH, bool _useQuick) public onlyGovernance {
+    require(_path2WETH[_path2WETH.length-1] == weth, "Path should end with WETH");
+    require(_path2WETH[0] == _token, "Path should start with rewardToken");
+    rewardTokens.push(_token);
+    reward2WETH[_token] = _path2WETH;
+    useQuick[_token] = _useQuick;
   }
 
   // We assume that all the tradings can be done on Uniswap
   function _liquidateReward() internal {
-    // we can accept 1 as minimum because this is called only by a trusted role
-    uint256 amountOutMin = 1;
+    if (!sell()) {
+      // Profits can be disabled for possible simplified and rapoolId exit
+      emit ProfitsNotCollected(sell(), false);
+      return;
+    }
 
-    // swap second reward token to reward token
-    uint256 secondRewardBalance = IERC20(secondRewardToken()).balanceOf(address(this));
+    for(uint256 i = 0; i < rewardTokens.length; i++){
+      address token = rewardTokens[i];
+      uint256 rewardBalance = IERC20(token).balanceOf(address(this));
+      if (rewardBalance == 0 || reward2WETH[token].length < 2) {
+        continue;
+      }
 
-    // allow Uniswap to sell our reward
-    IERC20(secondRewardToken()).safeApprove(sushiswapRouterV2, 0);
-    IERC20(secondRewardToken()).safeApprove(sushiswapRouterV2, secondRewardBalance);
+      address routerV2;
+      if(useQuick[token]) {
+        routerV2 = quickswapRouterV2;
+      } else {
+        routerV2 = sushiswapRouterV2;
+      }
+      IERC20(token).safeApprove(routerV2, 0);
+      IERC20(token).safeApprove(routerV2, rewardBalance);
 
-    if (secondRewardBalance > 0) {
-      IUniswapV2Router02(sushiswapRouterV2).swapExactTokensForTokens(
-        secondRewardBalance,
-        amountOutMin,
-        secondRewardRoute,
-        address(this),
-        block.timestamp
+      // we can accept 1 as the minimum because this will be called only by a trusted worker
+      IUniswapV2Router02(routerV2).swapExactTokensForTokens(
+        rewardBalance, 1, reward2WETH[token], address(this), block.timestamp
       );
     }
 
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    if (!sell() || rewardBalance < sellFloor()) {
-      // Profits can be disabled for possible simplified and rapid exit
-      emit ProfitsNotCollected(sell(), rewardBalance < sellFloor());
-      return;
-    }
-
     notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
 
     if (remainingRewardBalance == 0) {
       return;
     }
-
-    // allow Uniswap to sell our reward
-    IERC20(rewardToken()).safeApprove(sushiswapRouterV2, 0);
-    IERC20(rewardToken()).safeApprove(sushiswapRouterV2, remainingRewardBalance);
 
     if (isLpAsset()) {
       address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
@@ -188,12 +205,22 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
 
       uint256 token0Amount;
 
-      if (uniswapRoutes[uniLPComponentToken0].length > 1) {
+      if (WETH2deposit[uniLPComponentToken0].length > 1) {
+        address routerV2;
+        if(useQuick[uniLPComponentToken0]) {
+          routerV2 = quickswapRouterV2;
+        } else {
+          routerV2 = sushiswapRouterV2;
+        }
+
+        IERC20(rewardToken()).safeApprove(routerV2, 0);
+        IERC20(rewardToken()).safeApprove(routerV2, toToken0);
+
         // if we need to liquidate the token0
-        IUniswapV2Router02(sushiswapRouterV2).swapExactTokensForTokens(
+        IUniswapV2Router02(routerV2).swapExactTokensForTokens(
           toToken0,
-          amountOutMin,
-          uniswapRoutes[uniLPComponentToken0],
+          1,
+          WETH2deposit[uniLPComponentToken0],
           address(this),
           block.timestamp
         );
@@ -205,12 +232,22 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
 
       uint256 token1Amount;
 
-      if (uniswapRoutes[uniLPComponentToken1].length > 1) {
-        // sell reward token to token1
-        IUniswapV2Router02(sushiswapRouterV2).swapExactTokensForTokens(
+      if (WETH2deposit[uniLPComponentToken1].length > 1) {
+        address routerV2;
+        if(useQuick[uniLPComponentToken1]) {
+          routerV2 = quickswapRouterV2;
+        } else {
+          routerV2 = sushiswapRouterV2;
+        }
+
+        IERC20(rewardToken()).safeApprove(routerV2, 0);
+        IERC20(rewardToken()).safeApprove(routerV2, toToken1);
+
+        // if we need to liquidate the token1
+        IUniswapV2Router02(routerV2).swapExactTokensForTokens(
           toToken1,
-          amountOutMin,
-          uniswapRoutes[uniLPComponentToken1],
+          1,
+          WETH2deposit[uniLPComponentToken1],
           address(this),
           block.timestamp
         );
@@ -239,10 +276,20 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
         block.timestamp
       );
     } else {
-      IUniswapV2Router02(sushiswapRouterV2).swapExactTokensForTokens(
+      address routerV2;
+      if(useQuick[underlying()]) {
+        routerV2 = quickswapRouterV2;
+      } else {
+        routerV2 = sushiswapRouterV2;
+      }
+
+      IERC20(rewardToken()).safeApprove(routerV2, 0);
+      IERC20(rewardToken()).safeApprove(routerV2, remainingRewardBalance);
+
+      IUniswapV2Router02(routerV2).swapExactTokensForTokens(
         remainingRewardBalance,
-        amountOutMin,
-        uniswapRoutes[underlying()],
+        1,
+        WETH2deposit[underlying()],
         address(this),
         block.timestamp
       );
@@ -324,7 +371,7 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
   *   when the investing is being paused by governance.
   */
   function doHardWork() external onlyNotPausedInvesting restricted {
-    harvestReward();
+    IMiniChefV2(rewardPool()).harvest(poolId(), address(this));
     _liquidateReward();
     investAllUnderlying();
   }
@@ -337,13 +384,6 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
     _setSell(s);
   }
 
-  /**
-  * Sets the minimum amount of CRV needed to trigger a sale.
-  */
-  function setSellFloor(uint256 floor) public onlyGovernance {
-    _setSellFloor(floor);
-  }
-
   // masterchef rewards pool ID
   function _setPoolId(uint256 _value) internal {
     setUint256(_POOLID_SLOT, _value);
@@ -353,28 +393,11 @@ contract MiniChefV2Strategy is BaseUpgradeableStrategy {
     return getUint256(_POOLID_SLOT);
   }
 
-  // complexRewarder second reward
-  function _setSecondRewardToken(address _address) internal {
-    setAddress(_SECOND_REWARD_TOKEN_SLOT, _address);
-  }
-
-  function secondRewardToken() public view returns (address) {
-    return getAddress(_SECOND_REWARD_TOKEN_SLOT);
-  }
-
   function isLpAsset() public view returns (bool) {
     return getBoolean(_IS_LP_ASSET_SLOT);
   }
 
   function finalizeUpgrade() external onlyGovernance {
     _finalizeUpgrade();
-    // reset the liquidation paths
-    // they need to be re-set manually
-    if (isLpAsset()) {
-      uniswapRoutes[IUniswapV2Pair(underlying()).token0()] = new address[](0);
-      uniswapRoutes[IUniswapV2Pair(underlying()).token1()] = new address[](0);
-    } else {
-      uniswapRoutes[underlying()] = new address[](0);
-    }
   }
 }

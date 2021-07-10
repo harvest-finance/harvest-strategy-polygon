@@ -14,19 +14,20 @@ const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
 //const Strategy = artifacts.require("");
-const Strategy = artifacts.require("SushiStrategyMainnet_MATIC_ETH");
+const Strategy = artifacts.require("SushiStrategyMainnet_DAI_ETH");
 
 const sushiRouterAddress = "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506";
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Polygon Mainnet Sushiswap MATIC/ETH", function() {
+describe("Polygon Mainnet Sushiswap DAI/ETH", function() {
   let accounts;
 
   // external contracts
   let underlying;
 
   // external setup
-  let token1Addr = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619";
+  let token0Addr = "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"; //dai
+  let token1Addr = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619"; //weth
 
   // parties in the protocol
   let governance;
@@ -39,16 +40,27 @@ describe("Polygon Mainnet Sushiswap MATIC/ETH", function() {
   let controller;
   let vault;
   let strategy;
+  let token0;
+  let farmerToken0Balance;
   let token1;
   let farmerToken1Balance;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0xc4e595acDD7d12feC385E5dA5D43160e8A0bAC0E");
+    underlying = await IERC20.at("0x6FF62bfb8c12109E8000935A6De54daD83a4f39f");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
   async function setupBalance(){
+    token0 = await IERC20.at(token0Addr);
     token1 = await IERC20.at(token1Addr);
+    await swapMaticToToken (
+      farmer1,
+      [addresses.WMATIC, token1.address, token0.address],
+      "1000" + "000000000000000000",
+      sushiRouterAddress
+    );
+    farmerToken0Balance = await token0.balanceOf(farmer1);
+
     await swapMaticToToken (
       farmer1,
       [addresses.WMATIC, token1.address],
@@ -56,11 +68,12 @@ describe("Polygon Mainnet Sushiswap MATIC/ETH", function() {
       sushiRouterAddress
     );
     farmerToken1Balance = await token1.balanceOf(farmer1);
+
     await addLiquidity (
       farmer1,
-      "Matic",
+      token0,
       token1,
-      "1000" + "000000000000000000",
+      farmerToken0Balance,
       farmerToken1Balance,
       sushiRouterAddress
     );

@@ -46,7 +46,7 @@ describe("Polygon Mainnet Sushiswap USDC/ETH", function() {
   let farmerToken1Balance;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0x34965ba0ac2451a34a0471f04cca3f990b8dea27");
+    underlying = await IERC20.at("0x34965ba0ac2451A34a0471F04CCa3F990b8dea27");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -78,9 +78,6 @@ describe("Polygon Mainnet Sushiswap USDC/ETH", function() {
       sushiRouterAddress
     );
     farmerBalance = await underlying.balanceOf(farmer1);
-
-    console.log("farmerBalance: ");
-    console.log(new BigNumber(farmerBalance).toFixed());
   }
 
   before(async function() {
@@ -103,8 +100,6 @@ describe("Polygon Mainnet Sushiswap USDC/ETH", function() {
       "governance": governance,
       "strategyArtifactIsUpgradable": true
     });
-
-    await strategy.setSellFloor(0, {from:governance});
 
     // whale send underlying to farmers
     await setupBalance();
