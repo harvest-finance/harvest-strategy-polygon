@@ -17,6 +17,8 @@ const IERC20 = artifacts.require("IERC20");
 //const Strategy = artifacts.require("");
 const Strategy = artifacts.require("BalancerStrategyMainnet_POLYDEFI2");
 
+// Developed and tested at blockNumber 16746300
+
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
 describe("Polygon Mainnet Balancer Polydefi2", function() {
   let accounts;
