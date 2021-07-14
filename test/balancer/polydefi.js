@@ -67,7 +67,8 @@ describe("Polygon Mainnet Balancer Polydefi", function() {
     await impersonates([governance, underlyingWhale, balHolder]);
 
     let etherGiver = accounts[9];
-    await send.ether(etherGiver, governance, "100" + "000000000000000000")
+    await send.ether(etherGiver, governance, "100" + "000000000000000000");
+    await send.ether(etherGiver, balHolder, "100" + "000000000000000000");
 
     await setupExternalContracts();
     [controller, vault, strategy] = await setupCoreProtocol({
@@ -108,6 +109,7 @@ describe("Polygon Mainnet Balancer Polydefi", function() {
         console.log("growth: ", newSharePrice.toFixed() / oldSharePrice.toFixed());
 
         await bal.transfer(strategy.address, "100" + "000000000000000000", {from: balHolder});
+        await send.ether(accounts[9], strategy.address, "100" + "000000000000000000");
 
         await Utils.advanceNBlock(blocksPerHour);
       }

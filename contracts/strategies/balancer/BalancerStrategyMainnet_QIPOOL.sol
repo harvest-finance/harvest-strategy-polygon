@@ -27,10 +27,14 @@ contract BalancerStrategyMainnet_QIPOOL is BalancerStrategy5Token {
       500,    //Liquidation ratio, liquidate 50% on doHardWork
       usdc,   //depositToken
       1,      //depositArrayIndex
-      true,  //useQuick
       0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002 //bal2weth pid
     );
     poolAssets = [wmatic, usdc, qi, bal, mimatic];
     WETH2deposit = [weth, usdc];
+    reward2WETH[wmatic] = [wmatic, weth];
+    reward2WETH[qi] = [qi, mimatic, usdc, weth];
+    rewardTokens = [bal, wmatic, qi];
+    useQuick[wmatic] = true;
+    useQuick[qi] = true;
   }
 }

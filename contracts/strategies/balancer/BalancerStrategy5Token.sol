@@ -20,6 +20,7 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
   address public constant sushiswapRouterV2 = address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
   address public constant weth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
   address public constant bal = address(0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3);
+  address public constant wmatic = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
 
   // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
   bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
@@ -33,6 +34,9 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
   // this would be reset on each upgrade
   address[] public WETH2deposit;
   address[] public poolAssets;
+  mapping (address => address[]) public reward2WETH;
+  mapping (address => bool) public useQuick;
+  address[] public rewardTokens;
 
   constructor() public BaseUpgradeableStrategy() {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
@@ -53,7 +57,6 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
     uint256 _liquidationRatio,
     address _depositToken,
     uint256 _depositArrayIndex,
-    bool _useQuick,
     bytes32 _bal2wethpid
   ) public initializer {
 
@@ -80,7 +83,6 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
     _setBVault(_bVault);
     _setDepositToken(_depositToken);
     _setDepositArrayIndex(_depositArrayIndex);
-    setUseQuick(_useQuick);
     WETH2deposit = new address[](0);
   }
 
@@ -96,25 +98,38 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
     return (token == rewardToken() || token == underlying());
   }
 
-  function setLiquidationPath(address [] memory _route) public onlyGovernance {
-    require(_route[0] == rewardToken(), "Path should start with rewardToken");
+  function setDepositLiquidationPath(address [] memory _route, bool _useQuick) public onlyGovernance {
+    require(_route[0] == weth, "Path should start with WETH");
     require(_route[_route.length-1] == depositToken(), "Path should end with depositToken");
     WETH2deposit = _route;
+    useQuick[_route[_route.length-1]] = _useQuick;
   }
 
-  function changeDepositToken(address _depositToken, address[] memory _liquidationPath, uint256 _depositArrayIndex) public onlyGovernance {
+  function setRewardLiquidationPath(address [] memory _route, bool _useQuick) public onlyGovernance {
+    require(_route[_route.length-1] == weth, "Path should end with WETH");
+    bool isReward = false;
+    for(uint256 i = 0; i < rewardTokens.length; i++){
+      if (_route[0] == rewardTokens[i]) {
+        isReward = true;
+      }
+    }
+    require(isReward, "Path should start with a rewardToken");
+    reward2WETH[_route[0]] = _route;
+    useQuick[_route[0]] = _useQuick;
+  }
+
+  function addRewardToken(address _token, address[] memory _path2WETH, bool _useQuick) public onlyGovernance {
+    rewardTokens.push(_token);
+    setRewardLiquidationPath(_path2WETH, _useQuick);
+  }
+
+  function changeDepositToken(address _depositToken, address[] memory _liquidationPath, bool _useQuick, uint256 _depositArrayIndex) public onlyGovernance {
     _setDepositToken(_depositToken);
-    setLiquidationPath(_liquidationPath);
+    setDepositLiquidationPath(_liquidationPath, _useQuick);
     _setDepositArrayIndex(_depositArrayIndex);
   }
 
-  // We assume that all the tradings can be done on Uniswap
-  function _liquidateReward(uint256 balAmount) internal {
-    if (!sell() || balAmount < sellFloor() || balAmount == 0) {
-      // Profits can be disabled for possible simplified and rapid exit
-      emit ProfitsNotCollected(sell(), balAmount < sellFloor());
-      return;
-    }
+  function _bal2WETH(uint256 balAmount) internal {
     //swap bal to weth on balancer
     IBVault.SingleSwap memory singleSwap;
     IBVault.SwapKind swapKind = IBVault.SwapKind.GIVEN_IN;
@@ -136,6 +151,62 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
     IERC20(bal).safeApprove(bVault(), balAmount);
 
     IBVault(bVault()).swap(singleSwap, funds, 1, block.timestamp);
+  }
+
+  // We assume that all the tradings can be done on Uniswap
+  function _liquidateReward(uint256 _liquidationRatio) internal {
+    if (!sell()) {
+      // Profits can be disabled for possible simplified and rapid exit
+      emit ProfitsNotCollected(sell(), false);
+      return;
+    }
+
+    for(uint256 i = 0; i < rewardTokens.length; i++){
+      address token = rewardTokens[i];
+      uint256 rewardBalance;
+      if (token == wmatic) {
+        rewardBalance = address(this).balance;
+      } else {
+        rewardBalance = IERC20(token).balanceOf(address(this));
+      }
+      uint256 toLiquidate = rewardBalance.mul(_liquidationRatio).div(1000);
+      if (toLiquidate == 0) {
+        continue;
+      }
+      if (token == bal) {
+        _bal2WETH(toLiquidate);
+      } else if (token == wmatic) {
+        if (reward2WETH[token].length < 2) {
+          continue;
+        }
+        address routerV2;
+        if(useQuick[token]) {
+          routerV2 = quickswapRouterV2;
+        } else {
+          routerV2 = sushiswapRouterV2;
+        }
+        // we can accept 1 as the minimum because this will be called only by a trusted worker
+        IUniswapV2Router02(routerV2).swapExactETHForTokens{value: toLiquidate}(
+          1, reward2WETH[token], address(this), block.timestamp
+        );
+      } else {
+        if (reward2WETH[token].length < 2) {
+          continue;
+        }
+        address routerV2;
+        if(useQuick[token]) {
+          routerV2 = quickswapRouterV2;
+        } else {
+          routerV2 = sushiswapRouterV2;
+        }
+        IERC20(token).safeApprove(routerV2, 0);
+        IERC20(token).safeApprove(routerV2, toLiquidate);
+        // we can accept 1 as the minimum because this will be called only by a trusted worker
+        IUniswapV2Router02(routerV2).swapExactTokensForTokens(
+          toLiquidate, 1, reward2WETH[token], address(this), block.timestamp
+        );
+      }
+    }
 
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
     notifyProfitInRewardToken(rewardBalance);
@@ -147,7 +218,7 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
 
     if (WETH2deposit.length > 1) { //else we assume WETH is the deposit token, no need to swap
       address routerV2;
-      if(useQuick()) {
+      if(useQuick[depositToken()]) {
         routerV2 = quickswapRouterV2;
       } else {
         routerV2 = sushiswapRouterV2;
@@ -212,8 +283,7 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
   *   Withdraws all the asset to the vault
   */
   function withdrawAllToVault() public restricted {
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    _liquidateReward(rewardBalance);
+    _liquidateReward(1000);
     IERC20(underlying()).safeTransfer(vault(), IERC20(underlying()).balanceOf(address(this)));
   }
 
@@ -259,13 +329,11 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
   *   when the investing is being paused by governance.
   */
   function doHardWork() external onlyNotPausedInvesting restricted {
-    uint256 balBalance = IERC20(bal).balanceOf(address(this));
-    _liquidateReward(balBalance.mul(liquidationRatio()).div(1000));
+    _liquidateReward(liquidationRatio());
   }
 
   function liquidateAll() external onlyGovernance {
-    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    _liquidateReward(rewardBalance);
+    _liquidateReward(1000);
   }
 
   /**
@@ -309,14 +377,6 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
     return getUint256(_LIQUIDATION_RATIO_SLOT);
   }
 
-  function setUseQuick(bool _value) public onlyGovernance {
-    setBoolean(_USE_QUICK_SLOT, _value);
-  }
-
-  function useQuick() public view returns (bool) {
-    return getBoolean(_USE_QUICK_SLOT);
-  }
-
   function _setDepositToken(address _address) internal {
     setAddress(_DEPOSIT_TOKEN_SLOT, _address);
   }
@@ -358,4 +418,6 @@ contract BalancerStrategy5Token is BaseUpgradeableStrategy {
   function finalizeUpgrade() external onlyGovernance {
     _finalizeUpgrade();
   }
+
+  receive() external payable {} // this is needed for the receiving Matic
 }

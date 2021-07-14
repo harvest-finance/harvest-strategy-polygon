@@ -27,9 +27,11 @@ contract BalancerStrategyMainnet_POLYDEFI is BalancerStrategy5Token {
       500,    //Liquidation ratio, liquidate 50% on doHardWork
       weth,   //depositToken
       2,      //depositArrayIndex
-      false,  //useQuick
       0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002 //bal2weth pid
     );
     poolAssets = [usdc, link, weth, bal, aave];
+    reward2WETH[wmatic] = [wmatic, weth];
+    rewardTokens = [bal, wmatic];
+    useQuick[wmatic] = true;
   }
 }

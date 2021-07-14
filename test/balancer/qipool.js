@@ -30,6 +30,8 @@ describe("Polygon Mainnet Balancer Qipool", function() {
   let underlyingWhale = "0xf31BF6323Ba3B2193ec78299FCD9e993b7c12751";
   let balHolder = "0xc79dF9fe252Ac55AF8aECc3D93D20b6A4A84527B";
   let balAddr = "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3";
+  let qiHolder = "0x86fE8d6D4C8A007353617587988552B6921514Cb";
+  let qiAddr = "0x580A84C73811E1839F75d86d75d88cCa0c241fF4";
 
   // parties in the protocol
   let governance;
@@ -46,6 +48,7 @@ describe("Polygon Mainnet Balancer Qipool", function() {
   async function setupExternalContracts() {
     underlying = await IERC20.at("0xf461f2240B66D55Dcf9059e26C022160C06863BF");
     bal = await IERC20.at(balAddr);
+    qi = await IERC20.at(qiAddr);
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -64,10 +67,12 @@ describe("Polygon Mainnet Balancer Qipool", function() {
     farmer1 = accounts[1];
 
     // impersonate accounts
-    await impersonates([governance, underlyingWhale, balHolder]);
+    await impersonates([governance, underlyingWhale, balHolder, qiHolder]);
 
     let etherGiver = accounts[9];
-    await send.ether(etherGiver, governance, "100" + "000000000000000000")
+    await send.ether(etherGiver, governance, "100" + "000000000000000000");
+    await send.ether(etherGiver, balHolder, "100" + "000000000000000000");
+    await send.ether(etherGiver, qiHolder, "100" + "000000000000000000");
 
     await setupExternalContracts();
     [controller, vault, strategy] = await setupCoreProtocol({
@@ -108,6 +113,8 @@ describe("Polygon Mainnet Balancer Qipool", function() {
         console.log("growth: ", newSharePrice.toFixed() / oldSharePrice.toFixed());
 
         await bal.transfer(strategy.address, "100" + "000000000000000000", {from: balHolder});
+        await qi.transfer(strategy.address, "100" + "000000000000000000", {from: qiHolder});
+        await send.ether(accounts[9], strategy.address, "100" + "000000000000000000");
 
         await Utils.advanceNBlock(blocksPerHour);
       }
