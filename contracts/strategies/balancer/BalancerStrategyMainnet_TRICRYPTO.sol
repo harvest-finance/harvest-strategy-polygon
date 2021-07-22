@@ -2,9 +2,9 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "./BalancerStrategy3Token.sol";
+import "./BalancerStrategy.sol";
 
-contract BalancerStrategyMainnet_TRICRYPTO is BalancerStrategy3Token {
+contract BalancerStrategyMainnet_TRICRYPTO is BalancerStrategy {
 
   constructor() public {}
 
@@ -16,7 +16,7 @@ contract BalancerStrategyMainnet_TRICRYPTO is BalancerStrategy3Token {
     address wbtc = address(0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6);
     address usdc = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     address weth = address(0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619);
-    BalancerStrategy3Token.initializeBaseStrategy(
+    BalancerStrategy.initializeBaseStrategy(
       _storage,
       underlying,
       _vault,
@@ -25,7 +25,8 @@ contract BalancerStrategyMainnet_TRICRYPTO is BalancerStrategy3Token {
       500,    //Liquidation ratio, liquidate 50% on doHardWork
       weth,   //depositToken
       2,      //depositArrayIndex
-      0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002 //bal2weth pid
+      0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002, //bal2weth pid
+      3 //nTokens
     );
     poolAssets = [wbtc, usdc, weth];
     reward2WETH[wmatic] = [wmatic, weth];

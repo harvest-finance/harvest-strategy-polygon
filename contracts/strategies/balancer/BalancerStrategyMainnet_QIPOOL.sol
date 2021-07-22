@@ -2,9 +2,9 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "./BalancerStrategy5Token.sol";
+import "./BalancerStrategy.sol";
 
-contract BalancerStrategyMainnet_QIPOOL is BalancerStrategy5Token {
+contract BalancerStrategyMainnet_QIPOOL is BalancerStrategy {
 
   constructor() public {}
 
@@ -18,7 +18,7 @@ contract BalancerStrategyMainnet_QIPOOL is BalancerStrategy5Token {
     address qi = address(0x580A84C73811E1839F75d86d75d88cCa0c241fF4);
     address bal = address(0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3);
     address mimatic = address(0xa3Fa99A148fA48D14Ed51d610c367C61876997F1);
-    BalancerStrategy5Token.initializeBaseStrategy(
+    BalancerStrategy.initializeBaseStrategy(
       _storage,
       underlying,
       _vault,
@@ -27,7 +27,8 @@ contract BalancerStrategyMainnet_QIPOOL is BalancerStrategy5Token {
       500,    //Liquidation ratio, liquidate 50% on doHardWork
       usdc,   //depositToken
       1,      //depositArrayIndex
-      0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002 //bal2weth pid
+      0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002, //bal2weth pid
+      5 //nTokens
     );
     poolAssets = [wmatic, usdc, qi, bal, mimatic];
     WETH2deposit = [weth, usdc];

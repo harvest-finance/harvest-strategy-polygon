@@ -2,9 +2,9 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "./BalancerStrategy4Token.sol";
+import "./BalancerStrategy.sol";
 
-contract BalancerStrategyMainnet_STABLE is BalancerStrategy4Token {
+contract BalancerStrategyMainnet_STABLE is BalancerStrategy {
 
   constructor() public {}
 
@@ -17,7 +17,7 @@ contract BalancerStrategyMainnet_STABLE is BalancerStrategy4Token {
     address usdc = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     address mimatic = address(0xa3Fa99A148fA48D14Ed51d610c367C61876997F1);
     address dai = address(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063);
-    BalancerStrategy4Token.initializeBaseStrategy(
+    BalancerStrategy.initializeBaseStrategy(
       _storage,
       underlying,
       _vault,
@@ -26,7 +26,8 @@ contract BalancerStrategyMainnet_STABLE is BalancerStrategy4Token {
       500,    //Liquidation ratio, liquidate 50% on doHardWork
       usdc,   //depositToken
       0,      //depositArrayIndex
-      0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002 //bal2weth pid
+      0x0297e37f1873d2dab4487aa67cd56b58e2f27875000100000000000000000002, //bal2weth pid
+      4 //nTokens
     );
     poolAssets = [usdc, dai, mimatic, usdt];
     WETH2deposit = [weth, usdc];

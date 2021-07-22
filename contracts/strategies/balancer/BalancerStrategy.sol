@@ -11,7 +11,7 @@ import "../../base/upgradability/BaseUpgradeableStrategy.sol";
 import "../../base/interface/uniswap/IUniswapV2Pair.sol";
 import "./interface/IBVault.sol";
 
-contract BalancerStrategy4Token is BaseUpgradeableStrategy {
+contract BalancerStrategy is BaseUpgradeableStrategy {
 
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
@@ -30,6 +30,7 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
   bytes32 internal constant _DEPOSIT_TOKEN_SLOT = 0x219270253dbc530471c88a9e7c321b36afda219583431e7b6c386d2d46e70c86;
   bytes32 internal constant _BAL2WETH_POOLID_SLOT = 0x45ba019d7bbdedd3bc4822691e4d804339c1a4b73290d1f7370a432fe65381d4;
   bytes32 internal constant _DEPOSIT_ARRAY_INDEX_SLOT = 0xf5304231d5b8db321cd2f83be554278488120895d3326b9a012d540d75622ba3;
+  bytes32 internal constant _NTOKENS_SLOT = 0xbb60b35bae256d3c1378ff05e8d7bee588cd800739c720a107471dfa218f74c1;
 
   // this would be reset on each upgrade
   address[] public WETH2deposit;
@@ -37,6 +38,7 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
   mapping (address => address[]) public reward2WETH;
   mapping (address => bool) public useQuick;
   address[] public rewardTokens;
+
 
   constructor() public BaseUpgradeableStrategy() {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
@@ -46,6 +48,7 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
     assert(_DEPOSIT_TOKEN_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositToken")) - 1));
     assert(_BAL2WETH_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.bal2WethPoolId")) - 1));
     assert(_DEPOSIT_ARRAY_INDEX_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositArrayIndex")) - 1));
+    assert(_NTOKENS_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.nTokens")) - 1));
   }
 
   function initializeBaseStrategy(
@@ -57,7 +60,8 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
     uint256 _liquidationRatio,
     address _depositToken,
     uint256 _depositArrayIndex,
-    bytes32 _bal2wethpid
+    bytes32 _bal2wethpid,
+    uint256 _nTokens
   ) public initializer {
 
     BaseUpgradeableStrategy.initialize(
@@ -75,7 +79,7 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
 
     (address _lpt,) = IBVault(_bVault).getPool(_poolID);
     require(_lpt == _underlying, "Underlying mismatch");
-    require(_liquidationRatio < 1000, "Invalid ratio"); //Ratio base = 1000
+    require(_liquidationRatio <= 1000, "Invalid ratio"); //Ratio base = 1000
 
     setLiquidationRatio(_liquidationRatio);
     _setPoolId(_poolID);
@@ -83,6 +87,7 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
     _setBVault(_bVault);
     _setDepositToken(_depositToken);
     _setDepositArrayIndex(_depositArrayIndex);
+    _setNTokens(_nTokens);
     WETH2deposit = new address[](0);
   }
 
@@ -153,7 +158,6 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
     IBVault(bVault()).swap(singleSwap, funds, 1, block.timestamp);
   }
 
-  // We assume that all the tradings can be done on Uniswap
   function _liquidateReward(uint256 _liquidationRatio) internal {
     if (!sell()) {
       // Profits can be disabled for possible simplified and rapid exit
@@ -251,14 +255,13 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
     IERC20(depositToken()).safeApprove(bVault(), 0);
     IERC20(depositToken()).safeApprove(bVault(), depositTokenBalance);
 
-    IAsset[] memory assets = new IAsset[](4);
-    assets[0] = IAsset(poolAssets[0]);
-    assets[1] = IAsset(poolAssets[1]);
-    assets[2] = IAsset(poolAssets[2]);
-    assets[3] = IAsset(poolAssets[3]);
+    IAsset[] memory assets = new IAsset[](nTokens());
+    for (uint256 i = 0; i < nTokens(); i++) {
+      assets[i] = IAsset(poolAssets[i]);
+    }
 
     IBVault.JoinKind joinKind = IBVault.JoinKind.EXACT_TOKENS_IN_FOR_BPT_OUT;
-    uint256[] memory amountsIn = new uint256[](4);
+    uint256[] memory amountsIn = new uint256[](nTokens());
     amountsIn[depositArrayIndex()] = depositTokenBalance;
     uint256 minAmountOut = 1;
 
@@ -368,7 +371,7 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
   }
 
   function setLiquidationRatio(uint256 _ratio) public onlyGovernance {
-    require(_ratio < 1000, "Invalid ratio"); //Ratio base = 1000
+    require(_ratio <= 1000, "Invalid ratio"); //Ratio base = 1000
     setUint256(_LIQUIDATION_RATIO_SLOT, _ratio);
   }
 
@@ -398,6 +401,14 @@ contract BalancerStrategy4Token is BaseUpgradeableStrategy {
 
   function depositArrayIndex() public view returns (uint256) {
     return getUint256(_DEPOSIT_ARRAY_INDEX_SLOT);
+  }
+
+  function _setNTokens(uint256 _value) internal {
+    setUint256(_NTOKENS_SLOT, _value);
+  }
+
+  function nTokens() public view returns (uint256) {
+    return getUint256(_NTOKENS_SLOT);
   }
 
   function setBytes32(bytes32 slot, bytes32 _value) internal {
