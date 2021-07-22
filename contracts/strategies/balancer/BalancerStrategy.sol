@@ -86,8 +86,8 @@ contract BalancerStrategy is BaseUpgradeableStrategy {
     _setBal2WethPoolId(_bal2wethpid);
     _setBVault(_bVault);
     _setDepositToken(_depositToken);
-    _setDepositArrayIndex(_depositArrayIndex);
     _setNTokens(_nTokens);
+    _setDepositArrayIndex(_depositArrayIndex);
     WETH2deposit = new address[](0);
   }
 
@@ -396,6 +396,7 @@ contract BalancerStrategy is BaseUpgradeableStrategy {
   }
 
   function _setDepositArrayIndex(uint256 _value) internal {
+    require(_value <= nTokens(), "Invalid index");
     setUint256(_DEPOSIT_ARRAY_INDEX_SLOT, _value);
   }
 
