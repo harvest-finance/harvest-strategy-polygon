@@ -8,10 +8,17 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "../../base/interface/IVault.sol";
 import "../../base/upgradability/BaseUpgradeableStrategy.sol";
-import "../../base/interface/curve/ICurveDeposit_5token.sol";
 import "../../base/interface/curve/Gauge.sol";
+import "../../base/interface/curve/ICurveDeposit_2token.sol";
+import "../../base/interface/curve/ICurveDeposit_2token_underlying.sol";
+import "../../base/interface/curve/ICurveDeposit_3token.sol";
+import "../../base/interface/curve/ICurveDeposit_3token_underlying.sol";
+import "../../base/interface/curve/ICurveDeposit_4token.sol";
+import "../../base/interface/curve/ICurveDeposit_4token_underlying.sol";
+import "../../base/interface/curve/ICurveDeposit_5token.sol";
+import "../../base/interface/curve/ICurveDeposit_5token_underlying.sol";
 
-contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
+contract CurveStrategy is BaseUpgradeableStrategy {
 
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
@@ -25,6 +32,8 @@ contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
   bytes32 internal constant _DEPOSIT_ARRAY_POSITION_SLOT = 0xb7c50ef998211fff3420379d0bf5b8dfb0cee909d1b7d9e517f311c104675b09;
   bytes32 internal constant _CURVE_DEPOSIT_SLOT = 0xb306bb7adebd5a22f5e4cdf1efa00bc5f62d4f5554ef9d62c1b16327cd3ab5f9;
   bytes32 internal constant _DEPOSIT_TOKEN_SLOT = 0x219270253dbc530471c88a9e7c321b36afda219583431e7b6c386d2d46e70c86;
+  bytes32 internal constant _NTOKENS_SLOT = 0xbb60b35bae256d3c1378ff05e8d7bee588cd800739c720a107471dfa218f74c1;
+  bytes32 internal constant _DEPOSIT_UNDERLYING_SLOT = 0x7e1abf1e7032ca991b157f8f3d98f150896400297dd9e71e770edb7ac08d6216;
 
   address[] public WETH2deposit;
   mapping (address => address[]) public reward2WETH;
@@ -36,6 +45,8 @@ contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
     assert(_DEPOSIT_ARRAY_POSITION_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositArrayPosition")) - 1));
     assert(_CURVE_DEPOSIT_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.curveDeposit")) - 1));
     assert(_DEPOSIT_TOKEN_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositToken")) - 1));
+    assert(_NTOKENS_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.nTokens")) - 1));
+    assert(_DEPOSIT_UNDERLYING_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.depositUnderlying")) - 1));
   }
 
   function initializeBaseStrategy(
@@ -45,7 +56,9 @@ contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
     address _rewardPool,
     uint256 _depositArrayPosition,
     address _curveDeposit,
-    address _depositToken
+    address _depositToken,
+    uint256 _nTokens,
+    bool _depositUnderlying
   ) public initializer {
 
     BaseUpgradeableStrategy.initialize(
@@ -60,10 +73,11 @@ contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
       0, // sell floor
       12 hours // implementation change delay
     );
-    require(_depositArrayPosition < 5, "Deposit array position out of bounds");
+    _setNTokens(_nTokens);
     _setDepositArrayPosition(_depositArrayPosition);
     _setCurveDeposit(_curveDeposit);
     _setDepositToken(_depositToken);
+    _setDepositUnderlying(_depositUnderlying);
     WETH2deposit = new address[](0);
     rewardTokens = new address[](0);
   }
@@ -219,12 +233,45 @@ contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
     IERC20(depositToken()).safeApprove(curveDeposit(), 0);
     IERC20(depositToken()).safeApprove(curveDeposit(), tokenBalance);
 
-    uint256[5] memory depositArray;
-    depositArray[depositArrayPosition()] = tokenBalance;
-
     // we can accept 0 as minimum, this will be called only by trusted roles
     uint256 minimum = 0;
-    ICurveDeposit_5token(curveDeposit()).add_liquidity(depositArray, minimum);
+    if (depositUnderlying()) {
+      if (nTokens() == 2) {
+        uint256[2] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_2token_underlying(curveDeposit()).add_liquidity(depositArray, minimum, true);
+      } else if (nTokens() == 3) {
+        uint256[3] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_3token_underlying(curveDeposit()).add_liquidity(depositArray, minimum, true);
+      } else if (nTokens() == 4) {
+        uint256[4] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_4token_underlying(curveDeposit()).add_liquidity(depositArray, minimum, true);
+      } else {
+        uint256[5] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_5token_underlying(curveDeposit()).add_liquidity(depositArray, minimum, true);
+      }
+    } else {
+      if (nTokens() == 2) {
+        uint256[2] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_2token(curveDeposit()).add_liquidity(depositArray, minimum);
+      } else if (nTokens() == 3) {
+        uint256[3] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_3token(curveDeposit()).add_liquidity(depositArray, minimum);
+      } else if (nTokens() == 4) {
+        uint256[4] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_4token(curveDeposit()).add_liquidity(depositArray, minimum);
+      } else {
+        uint256[5] memory depositArray;
+        depositArray[depositArrayPosition()] = tokenBalance;
+        ICurveDeposit_5token(curveDeposit()).add_liquidity(depositArray, minimum);
+      }
+    }
   }
 
   /*
@@ -313,6 +360,7 @@ contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
   }
 
   function _setDepositArrayPosition(uint256 _value) internal {
+    require(_value < nTokens(), "Deposit array position out of bounds");
     setUint256(_DEPOSIT_ARRAY_POSITION_SLOT, _value);
   }
 
@@ -334,6 +382,22 @@ contract CurveStrategy3Crypto is BaseUpgradeableStrategy {
 
   function depositToken() public view returns (address) {
     return getAddress(_DEPOSIT_TOKEN_SLOT);
+  }
+
+  function _setNTokens(uint256 _value) internal {
+    setUint256(_NTOKENS_SLOT, _value);
+  }
+
+  function nTokens() public view returns (uint256) {
+    return getUint256(_NTOKENS_SLOT);
+  }
+
+  function _setDepositUnderlying(bool _value) internal {
+    setBoolean(_DEPOSIT_UNDERLYING_SLOT, _value);
+  }
+
+  function depositUnderlying() public view returns (bool) {
+    return getBoolean(_DEPOSIT_UNDERLYING_SLOT);
   }
 
   function finalizeUpgrade() external onlyGovernance {

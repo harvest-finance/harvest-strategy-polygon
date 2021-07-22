@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.6.12;
 
-import "./CurveStrategyAave.sol";
+import "./CurveStrategy.sol";
 
-contract CurveStrategyAaveMainnet is CurveStrategyAave {
+contract CurveStrategyAaveMainnet is CurveStrategy {
 
   address public aave_unused; // just a differentiator for the bytecode
 
@@ -19,14 +19,16 @@ contract CurveStrategyAaveMainnet is CurveStrategyAave {
     address crv = address(0x172370d5Cd63279eFa6d502DAB29171933a610AF);
     address usdc = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     address aaveCurveDeposit = address(0x445FE580eF8d70FF569aB36e80c647af338db351);
-    CurveStrategyAave.initializeBaseStrategy(
+    CurveStrategy.initializeBaseStrategy(
       _storage,
       underlying,
       _vault,
       gauge, //rewardPool
       1, //depositArrayPosition
       aaveCurveDeposit,
-      usdc //depositToken
+      usdc, //depositToken
+      3,
+      true
     );
     reward2WETH[wmatic] = [wmatic, weth];
     reward2WETH[crv] = [crv, weth];

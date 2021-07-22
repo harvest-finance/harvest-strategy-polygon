@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity 0.6.12;
 
-import "./CurveStrategy3Crypto.sol";
+import "./CurveStrategy.sol";
 
-contract CurveStrategy3CryptoMainnet is CurveStrategy3Crypto {
+contract CurveStrategy3CryptoMainnet is CurveStrategy {
 
   address public triCrypto_unused; // just a differentiator for the bytecode
 
@@ -19,14 +19,16 @@ contract CurveStrategy3CryptoMainnet is CurveStrategy3Crypto {
     address crv = address(0x172370d5Cd63279eFa6d502DAB29171933a610AF);
     address usdc = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
     address triCryptoCurveDeposit = address(0x3FCD5De6A9fC8A99995c406c77DDa3eD7E406f81);
-    CurveStrategy3Crypto.initializeBaseStrategy(
+    CurveStrategy.initializeBaseStrategy(
       _storage,
       underlying,
       _vault,
       gauge, //rewardPool
       1, //depositArrayPosition
       triCryptoCurveDeposit,
-      usdc //depositToken
+      usdc, //depositToken
+      5,
+      false
     );
     reward2WETH[wmatic] = [wmatic, weth];
     reward2WETH[crv] = [crv, weth];
