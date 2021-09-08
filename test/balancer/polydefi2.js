@@ -17,7 +17,7 @@ const IERC20 = artifacts.require("IERC20");
 //const Strategy = artifacts.require("");
 const Strategy = artifacts.require("BalancerStrategyMainnet_POLYDEFI2");
 
-// Developed and tested at blockNumber 16746300
+// Developed and tested at blockNumber 18886915
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
 describe("Polygon Mainnet Balancer Polydefi2", function() {
@@ -27,7 +27,7 @@ describe("Polygon Mainnet Balancer Polydefi2", function() {
   let underlying;
 
   // external setup
-  let underlyingWhale = "0xBefE4f86F189C1c817446B71EB6aC90e3cb68E60";
+  let underlyingWhale = "0xa9e244bAcf3Eb0de750b9d0D2e1930e56Ccb71F3";
   let balHolder = "0xc79dF9fe252Ac55AF8aECc3D93D20b6A4A84527B";
   let balAddr = "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3";
 

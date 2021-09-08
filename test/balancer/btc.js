@@ -15,19 +15,19 @@ const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
 //const Strategy = artifacts.require("");
-const Strategy = artifacts.require("BalancerStrategyMainnet_POLYBASE");
+const Strategy = artifacts.require("BalancerStrategyMainnet_BTC");
 
 // Developed and tested at blockNumber 18886915
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Polygon Mainnet Balancer Polybase", function() {
+describe("Polygon Mainnet Balancer BTC", function() {
   let accounts;
 
   // external contracts
   let underlying;
 
   // external setup
-  let underlyingWhale = "0xB85eAF59E6Dc69AC7B6d92C6C24E1a83B582b293";
+  let underlyingWhale = "0x3e6c560d7B184cA9dA9277B43CA8Ef2CB1b36082";
   let balHolder = "0xc79dF9fe252Ac55AF8aECc3D93D20b6A4A84527B";
   let balAddr = "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3";
 
@@ -44,7 +44,7 @@ describe("Polygon Mainnet Balancer Polybase", function() {
   let strategy;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0x0297e37f1873D2DAb4487Aa67cD56B58E2F27875");
+    underlying = await IERC20.at("0xFeadd389a5c427952D8fdb8057D6C8ba1156cC56");
     bal = await IERC20.at(balAddr);
     console.log("Fetching Underlying at: ", underlying.address);
   }

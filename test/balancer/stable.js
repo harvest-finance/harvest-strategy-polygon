@@ -17,7 +17,7 @@ const IERC20 = artifacts.require("IERC20");
 //const Strategy = artifacts.require("");
 const Strategy = artifacts.require("BalancerStrategyMainnet_STABLE");
 
-// Developed and tested at blockNumber 16812550
+// Developed and tested at blockNumber 18886915
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
 describe("Polygon Mainnet Balancer Stable", function() {
@@ -27,7 +27,7 @@ describe("Polygon Mainnet Balancer Stable", function() {
   let underlying;
 
   // external setup
-  let underlyingWhale = "0x89b24920E787ea34a661Ea1288adda53F658839A";
+  let underlyingWhale = "0x57D3c153d5d97310ca5c75481351b562a776c574";
   let balHolder = "0xc79dF9fe252Ac55AF8aECc3D93D20b6A4A84527B";
   let balAddr = "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3";
 

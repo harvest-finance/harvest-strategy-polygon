@@ -17,7 +17,7 @@ const IERC20 = artifacts.require("IERC20");
 //const Strategy = artifacts.require("");
 const Strategy = artifacts.require("BalancerStrategyMainnet_QIPOOL");
 
-// Developed and tested at blockNumber 16746300
+// Developed and tested at blockNumber 18886915
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
 describe("Polygon Mainnet Balancer Qipool", function() {
@@ -27,10 +27,10 @@ describe("Polygon Mainnet Balancer Qipool", function() {
   let underlying;
 
   // external setup
-  let underlyingWhale = "0xf31BF6323Ba3B2193ec78299FCD9e993b7c12751";
+  let underlyingWhale = "0x67941779E59CEFDBc61Af9Cb047d44C173301795";
   let balHolder = "0xc79dF9fe252Ac55AF8aECc3D93D20b6A4A84527B";
   let balAddr = "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3";
-  let qiHolder = "0x86fE8d6D4C8A007353617587988552B6921514Cb";
+  let qiHolder = "0x59217DB02763cB5b10593d9ead6aDf62f5724387";
   let qiAddr = "0x580A84C73811E1839F75d86d75d88cCa0c241fF4";
 
   // parties in the protocol
