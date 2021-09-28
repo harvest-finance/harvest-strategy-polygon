@@ -15,8 +15,6 @@ import "./interfaces/IUSDCVault.sol";
 import "./interfaces/IPermanentLiquidityPool.sol";
 import "./interfaces/IDesignatedPoolRegistry.sol";
 
-import "hardhat/console.sol";
-
 contract ComplifiStrategy is BaseUpgradeableStrategy {
 
   using SafeMath for uint256;
@@ -137,7 +135,6 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
   // We assume that all the tradings can be done on Uniswap
   function _liquidateReward() internal {
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    console.log("Reward balance:", rewardBalance);
     if (!sell() || rewardBalance < sellFloor()) {
       // Profits can be disabled for possible simplified and rapid exit
       emit ProfitsNotCollected(sell(), rewardBalance < sellFloor());
@@ -146,7 +143,6 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
 
     notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    console.log("Remaining reward balance:", remainingRewardBalance);
     if (remainingRewardBalance == 0) {
       return;
     }
@@ -173,7 +169,6 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
 
   function _baseToUnderlying() internal {
     uint256 baseBalance = IERC20(baseToken()).balanceOf(address(this));
-    console.log("Base balance:", baseBalance);
     IERC20(baseToken()).safeApprove(proxy(), 0);
     IERC20(baseToken()).safeApprove(proxy(), baseBalance);
     address pool = IPermanentLiquidityPool(underlying()).designatedPool();
