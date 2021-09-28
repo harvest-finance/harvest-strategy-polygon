@@ -9,6 +9,13 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "../../base/interface/IVault.sol";
 import "../../base/upgradability/BaseUpgradeableStrategy.sol";
 import "./interfaces/ILiquidityMining.sol";
+import "./interfaces/IProxyActions.sol";
+import "./interfaces/IPool.sol";
+import "./interfaces/IUSDCVault.sol";
+import "./interfaces/IPermanentLiquidityPool.sol";
+import "./interfaces/IDesignatedPoolRegistry.sol";
+
+import "hardhat/console.sol";
 
 contract ComplifiStrategy is BaseUpgradeableStrategy {
 
@@ -16,31 +23,36 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
   using SafeERC20 for IERC20;
 
   address public constant quickswapRouterV2 = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
-  address public constant sushiswapRouterV2 = address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
 
   // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
   bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
-  bytes32 internal constant _USE_QUICK_SLOT = 0x189f8e6d384b6a451390d61330a1995a733994439125cd881a1bdac25fe65ea2;
-  bytes32 internal constant _IS_LP_ASSET_SLOT = 0xc2f3dabf55b1bdda20d5cf5fcba9ba765dfc7c9dbaf28674ce46d43d60d58768;
+  bytes32 internal constant _BASE_TOKEN_SLOT = 0xb9ace61e05bb293514c5e5999b24c7962eaa62eb455b54d96399829431bfd425;
+  bytes32 internal constant _PROXY_SLOT = 0xe0898eac8b9a936189ab0c51fb8795de984bdabad6d1a277d006fecbf46049ee;
+  bytes32 internal constant _MULTISIG_SLOT = 0x3e9de78b54c338efbc04e3a091b87dc7efb5d7024738302c548fc59fba1c34e6;
 
   // this would be reset on each upgrade
-  mapping (address => address[]) public swapRoutes;
+  address[] public liquidationPath;
+
+  modifier onlyMultiSigOrGovernance() {
+    require(msg.sender == multiSig() || msg.sender == governance(), "The sender has to be multiSig or governance");
+    _;
+  }
 
   constructor() public BaseUpgradeableStrategy() {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
-    assert(_USE_QUICK_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.useQuick")) - 1));
-    assert(_IS_LP_ASSET_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.isLpAsset")) - 1));
+    assert(_BASE_TOKEN_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.baseToken")) - 1));
+    assert(_PROXY_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.proxy")) - 1));
+    assert(_MULTISIG_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.multiSig")) - 1));
   }
 
-  function initializeStrategy(
+  function initializeBaseStrategy(
     address _storage,
     address _underlying,
     address _vault,
     address _rewardPool,
     address _rewardToken,
-    uint256 _poolID,
-    bool _isLpAsset,
-    bool _useQuick
+    address _baseToken,
+    address _proxy
   ) public initializer {
 
     BaseUpgradeableStrategy.initialize(
@@ -57,43 +69,32 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
     );
 
     address _lpt;
-    (_lpt,,,) = ILiquidityMining(rewardPool()).poolInfo(_poolID);
+    uint256 pid = ILiquidityMining(rewardPool()).poolPidByAddress(_underlying);
+    (_lpt,,,) = ILiquidityMining(rewardPool()).poolInfo(pid);
     require(_lpt == underlying(), "Pool Info does not match underlying");
-    _setPoolId(_poolID);
-
-    if (_isLpAsset) {
-      address LPComponentToken0 = IUniswapV2Pair(underlying()).token0();
-      address LPComponentToken1 = IUniswapV2Pair(underlying()).token1();
-
-      // these would be required to be initialized separately by governance
-      swapRoutes[LPComponentToken0] = new address[](0);
-      swapRoutes[LPComponentToken1] = new address[](0);
-    } else {
-      swapRoutes[underlying()] = new address[](0);
-    }
-
-    setBoolean(_USE_QUICK_SLOT, _useQuick);
-    setBoolean(_IS_LP_ASSET_SLOT, _isLpAsset);
+    _setPoolId(pid);
+    _setBaseToken(_baseToken);
+    _setProxy(_proxy);
   }
 
   function depositArbCheck() public pure returns(bool) {
     return true;
   }
 
-  function rewardPoolBalance() internal view returns (uint256 bal) {
-      (bal,) = ILiquidityMining(rewardPool()).userPoolInfo(poolId(), address(this));
+  function rewardPoolBalance() internal view returns (uint256 balUnderlying) {
+      (balUnderlying,) = ILiquidityMining(rewardPool()).userPoolInfo(poolId(), address(this));
   }
 
   function exitRewardPool() internal {
-      uint256 bal = rewardPoolBalance();
-      if (bal != 0) {
-          ILiquidityMining(rewardPool()).withdraw(poolId(), bal);
+      uint256 balUnderlying = rewardPoolBalance();
+      if (balUnderlying != 0) {
+          ILiquidityMining(rewardPool()).withdraw(poolId(), balUnderlying);
       }
   }
 
   function emergencyExitRewardPool() internal {
-      uint256 bal = rewardPoolBalance();
-      if (bal != 0) {
+    uint256 balUnderlying = rewardPoolBalance();
+      if (balUnderlying != 0) {
           ILiquidityMining(rewardPool()).withdrawEmergency(poolId());
       }
   }
@@ -127,13 +128,16 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
     _setPausedInvesting(false);
   }
 
-  function setLiquidationPath(address _token, address [] memory _route) public onlyGovernance {
-    swapRoutes[_token] = _route;
+  function setLiquidationPath(address [] memory _route) public onlyGovernance {
+    require(_route[0] == rewardToken(), "Path should start with reward");
+    require(_route[_route.length-1] == baseToken(), "Path should end with baseToken");
+    liquidationPath = _route;
   }
 
   // We assume that all the tradings can be done on Uniswap
   function _liquidateReward() internal {
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
+    console.log("Reward balance:", rewardBalance);
     if (!sell() || rewardBalance < sellFloor()) {
       // Profits can be disabled for possible simplified and rapid exit
       emit ProfitsNotCollected(sell(), rewardBalance < sellFloor());
@@ -142,93 +146,41 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
 
     notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-
+    console.log("Remaining reward balance:", remainingRewardBalance);
     if (remainingRewardBalance == 0) {
       return;
     }
 
-    address routerV2;
-    if(useQuick()) {
-      routerV2 = quickswapRouterV2;
-    } else {
-      routerV2 = sushiswapRouterV2;
-    }
-
     // allow Uniswap to sell our reward
-    IERC20(rewardToken()).safeApprove(routerV2, 0);
-    IERC20(rewardToken()).safeApprove(routerV2, remainingRewardBalance);
+    IERC20(rewardToken()).safeApprove(quickswapRouterV2, 0);
+    IERC20(rewardToken()).safeApprove(quickswapRouterV2, remainingRewardBalance);
 
     // we can accept 1 as minimum because this is called only by a trusted role
     uint256 amountOutMin = 1;
 
-    if (isLpAsset()) {
-      address LPComponentToken0 = IUniswapV2Pair(underlying()).token0();
-      address LPComponentToken1 = IUniswapV2Pair(underlying()).token1();
-
-      uint256 toToken0 = remainingRewardBalance.div(2);
-      uint256 toToken1 = remainingRewardBalance.sub(toToken0);
-
-      uint256 token0Amount;
-
-      if (swapRoutes[LPComponentToken0].length > 1) {
-        // if we need to liquidate the token0
-        IUniswapV2Router02(routerV2).swapExactTokensForTokens(
-          toToken0,
-          amountOutMin,
-          swapRoutes[LPComponentToken0],
-          address(this),
-          block.timestamp
-        );
-        token0Amount = IERC20(LPComponentToken0).balanceOf(address(this));
-      } else {
-        // otherwise we assme token0 is the reward token itself
-        token0Amount = toToken0;
-      }
-
-      uint256 token1Amount;
-
-      if (swapRoutes[LPComponentToken1].length > 1) {
-        // sell reward token to token1
-        IUniswapV2Router02(routerV2).swapExactTokensForTokens(
-          toToken1,
-          amountOutMin,
-          swapRoutes[LPComponentToken1],
-          address(this),
-          block.timestamp
-        );
-        token1Amount = IERC20(LPComponentToken1).balanceOf(address(this));
-      } else {
-        token1Amount = toToken1;
-      }
-
-      // provide token1 and token2 to SUSHI
-      IERC20(LPComponentToken0).safeApprove(routerV2, 0);
-      IERC20(LPComponentToken0).safeApprove(routerV2, token0Amount);
-
-      IERC20(LPComponentToken1).safeApprove(routerV2, 0);
-      IERC20(LPComponentToken1).safeApprove(routerV2, token1Amount);
-
-      // we provide liquidity to sushi
-      uint256 liquidity;
-      (,,liquidity) = IUniswapV2Router02(routerV2).addLiquidity(
-        LPComponentToken0,
-        LPComponentToken1,
-        token0Amount,
-        token1Amount,
-        1,  // we are willing to take whatever the pair gives us
-        1,  // we are willing to take whatever the pair gives us
-        address(this),
-        block.timestamp
-      );
-    } else {
-      IUniswapV2Router02(routerV2).swapExactTokensForTokens(
-        remainingRewardBalance,
-        amountOutMin,
-        swapRoutes[underlying()],
-        address(this),
-        block.timestamp
-      );
+    IUniswapV2Router02(quickswapRouterV2).swapExactTokensForTokens(
+      remainingRewardBalance,
+      amountOutMin,
+      liquidationPath,
+      address(this),
+      block.timestamp
+    );
+    uint256 baseBalance = IERC20(baseToken()).balanceOf(address(this));
+    if (baseBalance > 0){
+      _baseToUnderlying();
     }
+  }
+
+  function _baseToUnderlying() internal {
+    uint256 baseBalance = IERC20(baseToken()).balanceOf(address(this));
+    console.log("Base balance:", baseBalance);
+    IERC20(baseToken()).safeApprove(proxy(), 0);
+    IERC20(baseToken()).safeApprove(proxy(), baseBalance);
+    address pool = IPermanentLiquidityPool(underlying()).designatedPool();
+    uint256[] memory filler = new uint256[](0);
+
+    IProxyActions(proxy()).mintAndJoinPoolPermanent(underlying(), filler, pool, baseBalance, address(0), 0, address(0), 0, 0);
+    IProxyActions(proxy()).extractChange(pool);
   }
 
   /*
@@ -269,7 +221,6 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
       uint256 toWithdraw = Math.min(rewardPoolBalance(), needToWithdraw);
       ILiquidityMining(rewardPool()).withdraw(poolId(), toWithdraw);
     }
-
     IERC20(underlying()).safeTransfer(vault(), amount);
   }
 
@@ -312,8 +263,16 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
     investAllUnderlying();
   }
 
+  function claimRewards() external onlyMultiSigOrGovernance {
+    ILiquidityMining(rewardPool()).claim();
+    uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
+    notifyProfitInRewardToken(rewardBalance);
+    uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
+    IERC20(rewardToken()).safeTransfer(msg.sender, remainingRewardBalance);
+  }
+
   /**
-  * Can completely disable claiming rewards and selling. Good for emergency withdraw in the
+  * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
   * simplest possible way.
   */
   function setSell(bool s) public onlyGovernance {
@@ -336,27 +295,31 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
     return getUint256(_POOLID_SLOT);
   }
 
-  function setUseQuick(bool _value) public onlyGovernance {
-    setBoolean(_USE_QUICK_SLOT, _value);
+  function _setBaseToken(address _address) internal {
+    setAddress(_BASE_TOKEN_SLOT, _address);
   }
 
-  function useQuick() public view returns (bool) {
-    return getBoolean(_USE_QUICK_SLOT);
+  function baseToken() public view returns (address) {
+    return getAddress(_BASE_TOKEN_SLOT);
   }
 
-  function isLpAsset() public view returns (bool) {
-    return getBoolean(_IS_LP_ASSET_SLOT);
+  function _setProxy(address _address) internal {
+    setAddress(_PROXY_SLOT, _address);
+  }
+
+  function proxy() public view returns (address) {
+    return getAddress(_PROXY_SLOT);
+  }
+
+  function setMultiSig(address _address) public onlyGovernance {
+    setAddress(_MULTISIG_SLOT, _address);
+  }
+
+  function multiSig() public view returns (address) {
+    return getAddress(_MULTISIG_SLOT);
   }
 
   function finalizeUpgrade() external onlyGovernance {
     _finalizeUpgrade();
-    // reset the liquidation paths
-    // they need to be re-set manually
-    if (isLpAsset()) {
-      swapRoutes[IUniswapV2Pair(underlying()).token0()] = new address[](0);
-      swapRoutes[IUniswapV2Pair(underlying()).token1()] = new address[](0);
-    } else {
-      swapRoutes[underlying()] = new address[](0);
-    }
   }
 }

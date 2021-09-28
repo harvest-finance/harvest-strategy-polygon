@@ -25,7 +25,7 @@ async function printGasLog() {
 
 async function advanceNBlock (n) {
   let startingBlock = await time.latestBlock();
-  await time.increase(15 * Math.round(n));
+  await time.increase(2.1 * Math.round(n));
   let endBlock = startingBlock.addn(n);
   await time.advanceBlockTo(endBlock);
 }
