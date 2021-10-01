@@ -263,7 +263,9 @@ contract ComplifiStrategy is BaseUpgradeableStrategy {
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
     notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    IERC20(rewardToken()).safeTransfer(msg.sender, remainingRewardBalance);
+    if (remainingRewardBalance > 0) {
+      IERC20(rewardToken()).safeTransfer(msg.sender, remainingRewardBalance);
+    }
   }
 
   /**
