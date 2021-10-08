@@ -7,6 +7,7 @@ import "../StrategyBase.sol";
 import "../interface/uniswap/IUniswapV2Router02.sol";
 import "../interface/IVault.sol";
 import "./interface/SNXRewardInterface.sol";
+import "./interface/IDragonLair.sol";
 import "../interface/uniswap/IUniswapV2Pair.sol";
 
 contract SNXRewardUniLPStrategy is StrategyBase {
@@ -20,6 +21,8 @@ contract SNXRewardUniLPStrategy is StrategyBase {
   bool public pausedInvesting = false; // When this flag is true, the strategy will not be able to invest. But users should be able to withdraw.
 
   SNXRewardInterface public rewardPool;
+  bool public isDragonLairPool = true;
+  address constant public dragonLair = address(0xf28164A485B0B2C90639E47b0f377b4a438a16B1);
 
   // a flag for disabling selling for simplified emergency exit
   bool public sell = true;
@@ -42,13 +45,15 @@ contract SNXRewardUniLPStrategy is StrategyBase {
     address _vault,
     address _rewardPool,
     address _rewardToken,
-    address _routerV2
+    address _routerV2,
+    bool _isDragonLairPool
   )
   StrategyBase(_storage, _underlying, _vault, _rewardToken, _routerV2)
   public {
     uniLPComponentToken0 = IUniswapV2Pair(underlying).token0();
     uniLPComponentToken1 = IUniswapV2Pair(underlying).token1();
     rewardPool = SNXRewardInterface(_rewardPool);
+    isDragonLairPool = _isDragonLairPool;
   }
 
   function depositArbCheck() public pure returns(bool) {
@@ -79,8 +84,21 @@ contract SNXRewardUniLPStrategy is StrategyBase {
     uniswapRoutes[uniLPComponentToken1] = _uniswapRouteToToken1;
   }
 
+  /**
+   * if the pool gets dQuick as reward token it has to first be converted to QUICK
+   * by leaving the dragonLair
+   */
+  function convertDQuickToQuickIfNecessary() internal {
+    if(isDragonLairPool) {
+        uint256 dQuickBalance = IERC20(dragonLair).balanceOf(address(this));
+        IDragonLair(dragonLair).leave(dQuickBalance);
+    }
+  }
+
   // We assume that all the tradings can be done on Uniswap
   function _liquidateReward() internal {
+    convertDQuickToQuickIfNecessary();
+
     uint256 rewardBalance = IERC20(rewardToken).balanceOf(address(this));
     if (!sell || rewardBalance < sellFloor) {
       // Profits can be disabled for possible simplified and rapid exit
@@ -235,10 +253,6 @@ contract SNXRewardUniLPStrategy is StrategyBase {
   /*
   *   Get the reward, sell it in exchange for underlying, invest what you got.
   *   It's not much, but it's honest work.
-  *
-  *   Note that although `onlyNotPausedInvesting` is not added here,
-  *   calling `investAllUnderlying()` affectively blocks the usage of `doHardWork`
-  *   when the investing is being paused by governance.
   */
   function doHardWork() external onlyNotPausedInvesting restricted {
     rewardPool.getReward();

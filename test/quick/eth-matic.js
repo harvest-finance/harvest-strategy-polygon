@@ -13,7 +13,6 @@ const { send } = require("@openzeppelin/test-helpers");
 const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
-//const Strategy = artifacts.require("");
 const Strategy = artifacts.require("QuickStrategyMainnet_ETH_MATIC");
 
 

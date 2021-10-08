@@ -5,6 +5,14 @@ This [Hardhat](https://hardhat.org/) environment is configured to use Mainnet fo
 ## Installation
 
 1. Run `npm install` to install all the dependencies.
+2. Sign up on [Alchemy](https://dashboard.alchemyapi.io/signup/). We recommend using Alchemy over Infura to allow for a reproducible
+Mainnet fork testing environment as well as efficiency due to caching.
+3. Create a file `dev-keys.json`:
+  ```
+    {
+      "alchemyKey": "<your-alchemy-key>"
+    }
+  ```
 
 ## Run
 
