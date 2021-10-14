@@ -15,7 +15,15 @@ contract QuickStrategyMainnet_iFARM_QUICK is SNXRewardUniLPStrategy {
     address _storage,
     address _vault
   )
-  SNXRewardUniLPStrategy(_storage, ifarm_quick, _vault, SNXRewardPool, quick, routerAddress)
+  SNXRewardUniLPStrategy(
+    _storage,
+    ifarm_quick,
+    _vault,
+    SNXRewardPool,
+    quick,
+    routerAddress,
+    false // isDragonLairPool (Converts dQuick to QUICK for liquidation)
+  )
   public {
     require(IVault(_vault).underlying() == ifarm_quick, "Underlying mismatch");
     uniswapRoutes[ifarm] = [quick, ifarm];
