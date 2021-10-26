@@ -14,8 +14,6 @@ import "./interfaces/ISavingsContract.sol";
 import "./interfaces/IBVault.sol";
 import "./interfaces/IMasset.sol";
 
-import 'hardhat/console.sol';
-
 contract MStableStrategy is BaseUpgradeableStrategy {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;

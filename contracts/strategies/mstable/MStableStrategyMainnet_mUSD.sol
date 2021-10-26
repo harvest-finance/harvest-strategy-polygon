@@ -4,8 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "./MStableStrategy.sol";
 
-import 'hardhat/console.sol';
-
 contract MStableStrategyMainnet_mUSD is MStableStrategy {
 
     address public mstable_musd_unused; // just a differentiator for the bytecode
