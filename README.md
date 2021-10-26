@@ -18,7 +18,7 @@ Mainnet fork testing environment as well as efficiency due to caching.
 
 All tests are located under the `test` folder.
 
-1. Run `npx hardhat test [test file location]`: `npx hardhat test ./test/curve/aave.js`. This will produce the following output:
+1. Run `npx hardhat test [test file location]`: `npx hardhat test ./test/curve/aave.js` (if for some reason the NodeJS heap runs out of memory, make sure to explicitly increase its size via `export NODE_OPTIONS=--max_old_space_size=4096`). This will produce the following output:
   ```
   Polygon Mainnet Curve Aave
 Impersonating...
