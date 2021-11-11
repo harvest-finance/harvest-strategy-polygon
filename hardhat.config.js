@@ -21,7 +21,7 @@ module.exports = {
         mnemonic: secret.mnemonic,
       },
       forking: {
-        url: `https://polygon-mainnet.infura.io/v3/${secret.infuraKey}`,
+        url: `https://polygon-mainnet.g.alchemy.com/v2/${secret.alchemyKey}`,
       },
     }
   },

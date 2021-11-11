@@ -5,7 +5,8 @@ const {
   setupCoreProtocol,
   depositVault,
   swapMaticToToken,
-  addLiquidity
+  addLiquidity,
+  wrapMATIC
 } = require("../utilities/hh-utils.js");
 
 const addresses = require("../test-config.js");
@@ -13,18 +14,22 @@ const { send } = require("@openzeppelin/test-helpers");
 const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
 
-const Strategy = artifacts.require("QuickStrategyMainnet_ETH_MATIC");
+//const Strategy = artifacts.require("");
+const Strategy = artifacts.require("BalancerStrategyMainnet_STABLE");
 
+// Developed and tested at blockNumber 18886915
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Polygon Mainnet Quickswap ETH/MATIC", function() {
+describe("Polygon Mainnet Balancer Stable", function() {
   let accounts;
 
   // external contracts
   let underlying;
 
   // external setup
-  let token1Addr = "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619";
+  let underlyingWhale = "0x57D3c153d5d97310ca5c75481351b562a776c574";
+  let balHolder = "0xc79dF9fe252Ac55AF8aECc3D93D20b6A4A84527B";
+  let balAddr = "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3";
 
   // parties in the protocol
   let governance;
@@ -39,28 +44,17 @@ describe("Polygon Mainnet Quickswap ETH/MATIC", function() {
   let strategy;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0xadbF1854e5883eB8aa7BAf50705338739e558E5b");
+    underlying = await IERC20.at("0x06Df3b2bbB68adc8B0e302443692037ED9f91b42");
+    bal = await IERC20.at(balAddr);
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
   async function setupBalance(){
-    token1 = await IERC20.at(token1Addr);
-    await swapMaticToToken (
-      farmer1,
-      [addresses.WMATIC, token1.address],
-      "1000" + "000000000000000000",
-      addresses.QuickRouter
-    );
-    farmerToken1Balance = await token1.balanceOf(farmer1);
-    await addLiquidity (
-      farmer1,
-      "Matic",
-      token1,
-      "1000" + "000000000000000000",
-      farmerToken1Balance,
-      addresses.QuickRouter
-    );
-    farmerBalance = await underlying.balanceOf(farmer1);
+    let etherGiver = accounts[9];
+    await send.ether(etherGiver, underlyingWhale, "1" + "000000000000000000");
+
+    farmerBalance = await underlying.balanceOf(underlyingWhale);
+    await underlying.transfer(farmer1, farmerBalance, { from: underlyingWhale });
   }
 
   before(async function() {
@@ -70,20 +64,22 @@ describe("Polygon Mainnet Quickswap ETH/MATIC", function() {
     farmer1 = accounts[1];
 
     // impersonate accounts
-    await impersonates([governance]);
+    await impersonates([governance, underlyingWhale, balHolder]);
 
     let etherGiver = accounts[9];
-    await send.ether(etherGiver, governance, "100" + "000000000000000000")
+    await send.ether(etherGiver, governance, "100" + "000000000000000000");
+    await send.ether(etherGiver, balHolder, "100" + "000000000000000000");
 
     await setupExternalContracts();
     [controller, vault, strategy] = await setupCoreProtocol({
       "existingVaultAddress": null,
       "strategyArtifact": Strategy,
+      "strategyArtifactIsUpgradable": true,
       "underlying": underlying,
       "governance": governance,
     });
 
-    await strategy.setSellFloor(0, {from:governance});
+    await strategy.setSellFloor(1, {from:governance});
 
     // whale send underlying to farmers
     await setupBalance();
@@ -111,6 +107,9 @@ describe("Polygon Mainnet Quickswap ETH/MATIC", function() {
         console.log("old shareprice: ", oldSharePrice.toFixed());
         console.log("new shareprice: ", newSharePrice.toFixed());
         console.log("growth: ", newSharePrice.toFixed() / oldSharePrice.toFixed());
+
+        await bal.transfer(strategy.address, "100" + "000000000000000000", {from: balHolder});
+        await send.ether(accounts[9], strategy.address, "100" + "000000000000000000");
 
         await Utils.advanceNBlock(blocksPerHour);
       }
