@@ -85,14 +85,17 @@ describe("Polygon Mainnet IDLE WETH", function() {
       await depositVault(farmer1, underlying, vault, farmerBalance);
 
       // Using half days is to simulate how we doHardwork in the real world
-      // The rewards are time based and Hardhat propagates the chain with a block time of 16s
-      // So we have 225 blocks per hour, 2700 blocks per 12 hours.
+      // The rewards are time based and Hardhat propagates the chain with a block time of 2.3s
+      // So we have 1565 blocks per hour, 7826 blocks per 5 hours.
       let hours = 10;
-      let blocksPerHour = 2700;
+      let blocksPerHour = 7826;
       let oldSharePrice;
       let newSharePrice;
       for (let i = 0; i < hours; i++) {
         console.log("loop ", i);
+
+        console.log("---- Make partial withdrawal ----");
+        await vault.withdraw(farmerOldBalance.div(100).toFixed(), { from: farmer1});
 
         oldSharePrice = new BigNumber(await vault.getPricePerFullShare());
         await controller.doHardWork(vault.address, { from: governance });
@@ -102,14 +105,17 @@ describe("Polygon Mainnet IDLE WETH", function() {
         console.log("new shareprice: ", newSharePrice.toFixed());
         console.log("growth: ", newSharePrice.toFixed() / oldSharePrice.toFixed());
 
+        console.log("---- Make partial withdrawal ----");
+        await vault.withdraw(farmerOldBalance.div(100).toFixed(), { from: farmer1});
+
         await Utils.advanceNBlock(blocksPerHour);
       }
       await vault.withdraw(new BigNumber(await vault.balanceOf(farmer1)).toFixed(), { from: farmer1 });
       let farmerNewBalance = new BigNumber(await underlying.balanceOf(farmer1));
       Utils.assertBNGt(farmerNewBalance, farmerOldBalance);
 
-      apr = (farmerNewBalance.toFixed()/farmerOldBalance.toFixed()-1)*(24/(blocksPerHour*hours/225))*365;
-      apy = ((farmerNewBalance.toFixed()/farmerOldBalance.toFixed()-1)*(24/(blocksPerHour*hours/225))+1)**365;
+      apr = (farmerNewBalance.toFixed()/farmerOldBalance.toFixed()-1)*(24/(blocksPerHour*hours/(3600/2.3)))*365;
+      apy = ((farmerNewBalance.toFixed()/farmerOldBalance.toFixed()-1)*(24/(blocksPerHour*hours/(3600/2.3)))+1)**365;
 
       console.log("earned!");
       console.log("APR:", apr*100, "%");

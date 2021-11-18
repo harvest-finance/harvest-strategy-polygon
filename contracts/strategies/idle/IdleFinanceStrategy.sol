@@ -110,9 +110,12 @@ contract IdleFinanceStrategy is RewardTokenProfitNotifier {
   */
   function withdrawAll() internal {
     uint256 balance = IERC20(idleUnderlying).balanceOf(address(this));
-
+    uint256 underlyingBalanceInvested = balance.mul(virtualPrice).div(1e18);
+    uint256 underlyingBalanceBefore = underlying.balanceOf(address(this));
     // this automatically claims the crops
     IIdleTokenV3_1(idleUnderlying).redeemIdleToken(balance);
+    uint256 underlyingBalanceAfter = underlying.balanceOf(address(this));
+    require(underlyingBalanceAfter >= (underlyingBalanceBefore + underlyingBalanceInvested), "withdrawal output too low");
 
     liquidateRewards();
   }
@@ -128,6 +131,7 @@ contract IdleFinanceStrategy is RewardTokenProfitNotifier {
     uint256 toRedeem = totalIdleLpTokens.mul(ratio).div(1e18);
     IIdleTokenV3_1(idleUnderlying).redeemIdleToken(toRedeem);
     uint256 balanceAfter = underlying.balanceOf(address(this));
+    require(balanceAfter >= (balanceBefore + amountUnderlying), "withdrawal output too low");
     underlying.safeTransfer(vault, balanceAfter.sub(balanceBefore));
   }
 
