@@ -50,6 +50,6 @@
   },
   "dependencies": {
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
-    "prompt": "^1.1.0"
+    "prompt": "^1.2.0"
   }
 }
