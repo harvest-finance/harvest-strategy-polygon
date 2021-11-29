@@ -16,15 +16,23 @@ module.exports = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      chainId: 137,
       accounts: {
         mnemonic: secret.mnemonic,
       },
+      chainId: 137,
       forking: {
         url: `https://polygon-mainnet.g.alchemy.com/v2/${secret.alchemyKey}`,
-        blockNumber: 21244600, // <-- edit here
+        // blockNumber: 21244600, // <-- edit here
       },
-    }
+    },
+    mainnet: {
+      url: `https://polygon-mainnet.g.alchemy.com/v2/${secret.alchemyKey}`,
+      accounts: {
+        mnemonic: secret.mnemonic,
+      },
+      gas: 9000000,
+      gasPrice: 35e9,
+    },
   },
   solidity: {
     compilers: [
@@ -33,10 +41,10 @@ module.exports = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200
-          }
-        }
-      }
+            runs: 200,
+          },
+        },
+      },
     ],
   },
   namedAccounts: {
@@ -44,5 +52,8 @@ module.exports = {
   },
   mocha: {
     timeout: 2000000
-  }
+  },
+  etherscan: {
+    apiKey: secret.etherscanAPI,
+  },
 };
