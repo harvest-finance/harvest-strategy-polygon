@@ -12,7 +12,7 @@ const Strategy = artifacts.require("JarvisHodlStrategyV2Mainnet_4EUR");
 
 const D18 = new BigNumber(Math.pow(10, 18));
 
-//This test was developed at blockNumber 21710400
+//This test was developed at blockNumber 21935800
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
 describe("Mainnet Jarvis 4EUR HODL in LP", function() {
@@ -22,7 +22,7 @@ describe("Mainnet Jarvis 4EUR HODL in LP", function() {
   let underlying;
 
   // external setup
-  let underlyingWhale = "0xC258D51D09bBfB9d99365E95D16D197a78469128";
+  let underlyingWhale = "0x293C173b0AE90cD27c349cd8892EFA625A98DBae";
   let hodlUnderlying = "0x4924B6E1207EFb244433294619a5ADD08ACB3dfF";
 
   // parties in the protocol
