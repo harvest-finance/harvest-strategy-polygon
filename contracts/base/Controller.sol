@@ -33,9 +33,6 @@ contract Controller is IController, Governable {
     // Only smart contracts will be affected by being added to the greyList.
     mapping (address => bool) public override greyList;
 
-    // All vaults that we have
-    mapping (address => bool) public vaults;
-
     uint256 public constant override profitSharingNumerator = 5;
     uint256 public constant override profitSharingDenominator = 100;
 
@@ -46,11 +43,6 @@ contract Controller is IController, Governable {
       uint256 newSharePrice,
       uint256 timestamp
     );
-
-    modifier validVault(address _vault){
-        require(vaults[_vault], "vault does not exist");
-        _;
-    }
 
     mapping (address => bool) public hardWorkers;
 
@@ -76,10 +68,6 @@ contract Controller is IController, Governable {
       hardWorkers[_worker] = false;
     }
 
-    function hasVault(address _vault) external override returns (bool) {
-      return vaults[_vault];
-    }
-
     // Only smart contracts will be affected by the greyList.
     function addToGreyList(address _target) public onlyGovernance {
         greyList[_target] = true;
@@ -96,15 +84,13 @@ contract Controller is IController, Governable {
 
     function addVaultAndStrategy(address _vault, address _strategy) external override onlyGovernance {
         require(_vault != address(0), "new vault shouldn't be empty");
-        require(!vaults[_vault], "vault already exists");
         require(_strategy != address(0), "new strategy shouldn't be empty");
 
-        vaults[_vault] = true;
         // adding happens while setting
         IVault(_vault).setStrategy(_strategy);
     }
 
-    function doHardWork(address _vault) external override onlyHardWorkerOrGovernance validVault(_vault) {
+    function doHardWork(address _vault) external override onlyHardWorkerOrGovernance {
         uint256 oldSharePrice = IVault(_vault).getPricePerFullShare();
         IVault(_vault).doHardWork();
         emit SharePriceChangeLog(

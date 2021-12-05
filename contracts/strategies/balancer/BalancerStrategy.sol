@@ -81,7 +81,7 @@ contract BalancerStrategy is BaseUpgradeableStrategy {
     require(_lpt == _underlying, "Underlying mismatch");
     require(_liquidationRatio <= 1000, "Invalid ratio"); //Ratio base = 1000
 
-    setLiquidationRatio(_liquidationRatio);
+    setUint256(_LIQUIDATION_RATIO_SLOT, _liquidationRatio);
     _setPoolId(_poolID);
     _setBal2WethPoolId(_bal2wethpid);
     _setBVault(_bVault);

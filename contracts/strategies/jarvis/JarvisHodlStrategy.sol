@@ -308,7 +308,6 @@ contract JarvisHodlStrategy is BaseUpgradeableStrategy {
   }
 
   function setPotPool(address _value) public onlyGovernance {
-    require(potPool() == address(0), "PotPool already set");
     setAddress(_POTPOOL_SLOT, _value);
   }
 
