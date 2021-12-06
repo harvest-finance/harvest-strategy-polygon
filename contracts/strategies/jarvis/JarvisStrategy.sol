@@ -13,6 +13,8 @@ import "./interface/IKyberRewardLocker.sol";
 import "../../base/PotPool.sol";
 import "../../base/interface/kyber/IDMMRouter02.sol";
 import "../../base/interface/kyber/IDMMPool.sol";
+import "../../base/interface/kyber/IKyberZap.sol";
+
 
 contract JarvisStrategy is BaseUpgradeableStrategy {
 
@@ -20,6 +22,7 @@ contract JarvisStrategy is BaseUpgradeableStrategy {
   using SafeERC20 for IERC20;
 
   address public constant kyberRouter = address(0x546C79662E028B661dFB4767664d0273184E4dD1);
+  address public constant kyberZapper = address(0x83D4908c1B4F9Ca423BEE264163BC1d50F251c31);
   address public constant usdc = address(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
   uint256 internal constant maxUint = uint256(~0);
 
@@ -159,41 +162,9 @@ contract JarvisStrategy is BaseUpgradeableStrategy {
 
   function usdcToLp() internal {
     uint256 usdcBalance = IERC20(rewardToken()).balanceOf(address(this));
-    uint256 toReward = usdcBalance.div(2);
-    uint256 remainingUsdc = usdcBalance.sub(toReward);
-    address[] memory poolsPath = new address[](1);
-    poolsPath[0] = rewardLp();
-    address[] memory path = new address[](2);
-    path[0] = usdc;
-    path[1] = strategyReward();
-
-    IERC20(rewardToken()).safeApprove(kyberRouter, 0);
-    IERC20(rewardToken()).safeApprove(kyberRouter, usdcBalance);
-    IDMMRouter02(kyberRouter).swapExactTokensForTokens(
-        toReward,
-        1,
-        poolsPath,
-        path,
-        address(this),
-        block.timestamp
-    );
-
-    uint256 rewardBalance = IERC20(strategyReward()).balanceOf(address(this));
-    uint256[2] memory vReserveRatioBounds = [1, maxUint];
-    IERC20(strategyReward()).safeApprove(kyberRouter, 0);
-    IERC20(strategyReward()).safeApprove(kyberRouter, rewardBalance);
-    IDMMRouter02(kyberRouter).addLiquidity(
-        usdc,
-        strategyReward(),
-        rewardLp(),
-        remainingUsdc,
-        rewardBalance,
-        1,
-        1,
-        vReserveRatioBounds,
-        address(this),
-        block.timestamp
-    );
+    IERC20(rewardToken()).safeApprove(kyberZapper, 0);
+    IERC20(rewardToken()).safeApprove(kyberZapper, usdcBalance);
+    IKyberZap(kyberZapper).zapIn(usdc, strategyReward(), usdcBalance, rewardLp(), address(this), 1, block.timestamp);
   }
 
   /*
