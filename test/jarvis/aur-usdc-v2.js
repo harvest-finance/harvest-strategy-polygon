@@ -6,19 +6,19 @@ const addresses = require("../test-config.js");
 const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20");
 
-const Strategy = artifacts.require("JarvisStrategyV2Mainnet_DEN_4EUR");
+const Strategy = artifacts.require("JarvisStrategyMainnet_AUR_USDC_V2");
 
-//This test was developed at blockNumber 21935800
+//This test was developed at blockNumber 22214000
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Mainnet Jarvis DEN-4EUR", function() {
+describe("Mainnet Jarvis AUR-USDC V2", function() {
   let accounts;
 
   // external contracts
   let underlying;
 
   // external setup
-  let underlyingWhale = "0x91c9D4373B077eF8082F468C7c97f2c499e36F5b";
+  let underlyingWhale = "0x8ef00583baa186094d9a34a0a4750c1d1bb86831";
 
   // parties in the protocol
   let governance;
@@ -33,7 +33,7 @@ describe("Mainnet Jarvis DEN-4EUR", function() {
   let strategy;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0x4924B6E1207EFb244433294619a5ADD08ACB3dfF");
+    underlying = await IERC20.at("0xA623aacf9eB4Fc0a29515F08bdABB0d8Ce385cF7");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -76,7 +76,7 @@ describe("Mainnet Jarvis DEN-4EUR", function() {
 
       // Using half days is to simulate how we doHardwork in the real world
       let hours = 10;
-      let blocksPerHour = 1565*5;
+      let blocksPerHour = 2400;
       let oldSharePrice;
       let newSharePrice;
       for (let i = 0; i < hours; i++) {

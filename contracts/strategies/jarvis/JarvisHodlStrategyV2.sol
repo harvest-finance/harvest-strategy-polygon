@@ -12,6 +12,7 @@ import "./interface/IElysianFields.sol";
 import "../../base/PotPool.sol";
 import "../../base/interface/kyber/IDMMRouter02.sol";
 import "../../base/interface/kyber/IDMMPool.sol";
+import "../../base/interface/kyber/IKyberZap.sol";
 
 contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
 
@@ -19,6 +20,7 @@ contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
   using SafeERC20 for IERC20;
 
   address public constant kyberRouter = address(0x546C79662E028B661dFB4767664d0273184E4dD1);
+  address public constant kyberZapper = address(0x83D4908c1B4F9Ca423BEE264163BC1d50F251c31);
   address public constant msig = address(0x39cC360806b385C96969ce9ff26c23476017F652);
   uint256 internal constant maxUint = uint256(~0);
 
@@ -150,48 +152,9 @@ contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
 
   function rewardToLp() internal {
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
-    uint256 toSwap = rewardBalance.div(2);
-    uint256 remainingReward = rewardBalance.sub(toSwap);
-    address[] memory poolsPath = new address[](1);
-    poolsPath[0] = rewardLp();
-    address[] memory path = new address[](2);
-    path[0] = rewardToken();
-    path[1] = rewardLpToken1();
-    uint256 balanceBefore = IERC20(underlying()).balanceOf(address(this));
-
-    IERC20(rewardToken()).safeApprove(kyberRouter, 0);
-    IERC20(rewardToken()).safeApprove(kyberRouter, rewardBalance);
-    IDMMRouter02(kyberRouter).swapExactTokensForTokens(
-        toSwap,
-        1,
-        poolsPath,
-        path,
-        address(this),
-        block.timestamp
-    );
-
-    uint256 rewardLpToken1Balance;
-    if (rewardLpToken1() == underlying()) {
-      uint256 balanceAfter = IERC20(underlying()).balanceOf(address(this));
-      rewardLpToken1Balance = balanceAfter.sub(balanceBefore);
-    } else {
-      rewardLpToken1Balance = IERC20(rewardLpToken1()).balanceOf(address(this));
-    }
-    uint256[2] memory vReserveRatioBounds = [1, maxUint];
-    IERC20(rewardLpToken1()).safeApprove(kyberRouter, 0);
-    IERC20(rewardLpToken1()).safeApprove(kyberRouter, rewardLpToken1Balance);
-    IDMMRouter02(kyberRouter).addLiquidity(
-        rewardToken(),
-        rewardLpToken1(),
-        rewardLp(),
-        remainingReward,
-        rewardLpToken1Balance,
-        1,
-        1,
-        vReserveRatioBounds,
-        address(this),
-        block.timestamp
-    );
+    IERC20(rewardToken()).safeApprove(kyberZapper, 0);
+    IERC20(rewardToken()).safeApprove(kyberZapper, rewardBalance);
+    IKyberZap(kyberZapper).zapIn(rewardToken(), rewardLpToken1(), rewardBalance, rewardLp(), address(this), 1, block.timestamp);
   }
 
   /*
