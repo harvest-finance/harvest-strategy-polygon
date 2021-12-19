@@ -30,6 +30,8 @@ describe("Polygon Mainnet Balancer TUSD Stable", function() {
   let underlyingWhale = "0x879CE8cd44ba2873773E4A9fa0D768b8A3FFB88D";
   let balHolder = "0xc79dF9fe252Ac55AF8aECc3D93D20b6A4A84527B";
   let balAddr = "0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3";
+  let tusdAddr = "0x2e1ad108ff1d8c782fcbbb89aad783ac49586756";
+  let tusdHolder = "0x879CE8cd44ba2873773E4A9fa0D768b8A3FFB88D";
 
   // parties in the protocol
   let governance;
@@ -46,6 +48,7 @@ describe("Polygon Mainnet Balancer TUSD Stable", function() {
   async function setupExternalContracts() {
     underlying = await IERC20.at("0x0d34e5dD4D8f043557145598E4e2dC286B35FD4f");
     bal = await IERC20.at(balAddr);
+    tusd = await IERC20.at(tusdAddr);
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -64,11 +67,12 @@ describe("Polygon Mainnet Balancer TUSD Stable", function() {
     farmer1 = accounts[1];
 
     // impersonate accounts
-    await impersonates([governance, underlyingWhale, balHolder]);
+    await impersonates([governance, underlyingWhale, balHolder, tusdHolder]);
 
     let etherGiver = accounts[9];
     await send.ether(etherGiver, governance, "100" + "000000000000000000");
     await send.ether(etherGiver, balHolder, "100" + "000000000000000000");
+    await send.ether(etherGiver, tusdHolder, "100" + "000000000000000000");
 
     await setupExternalContracts();
     [controller, vault, strategy] = await setupCoreProtocol({
@@ -109,6 +113,7 @@ describe("Polygon Mainnet Balancer TUSD Stable", function() {
         console.log("growth: ", newSharePrice.toFixed() / oldSharePrice.toFixed());
 
         await bal.transfer(strategy.address, "100" + "000000000000000000", {from: balHolder});
+        await tusd.transfer(strategy.address, "100" + "000000000000000000", {from: tusdHolder});
         await send.ether(accounts[9], strategy.address, "100" + "000000000000000000");
 
         await Utils.advanceNBlock(blocksPerHour);

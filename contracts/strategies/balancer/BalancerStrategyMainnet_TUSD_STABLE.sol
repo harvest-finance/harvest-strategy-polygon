@@ -32,8 +32,10 @@ contract BalancerStrategyMainnet_TUSD_STABLE is BalancerStrategy {
     poolAssets = [usdc, tusd, dai, usdt];
     WETH2deposit = [weth, usdc];
     reward2WETH[wmatic] = [wmatic, weth];
-    rewardTokens = [bal, wmatic];
+    reward2WETH[tusd] = [tusd, usdc, weth];
+    rewardTokens = [bal, wmatic, tusd];
     useQuick[wmatic] = true;
     useQuick[usdc] = true;
+    useQuick[tusd] = false;
   }
 }
