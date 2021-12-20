@@ -13,6 +13,7 @@ const addresses = require("../test-config.js");
 const { send } = require("@openzeppelin/test-helpers");
 const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("IERC20");
+const WMATIC = artifacts.require("WMATIC");
 
 //const Strategy = artifacts.require("");
 const Strategy = artifacts.require("BalancerStrategyMainnet_TUSD_STABLE");
@@ -25,6 +26,9 @@ describe("Polygon Mainnet Balancer TUSD Stable", function() {
 
   // external contracts
   let underlying;
+  let bal;
+  let tusd;
+  let wmatic;
 
   // external setup
   let underlyingWhale = "0x879CE8cd44ba2873773E4A9fa0D768b8A3FFB88D";
@@ -49,6 +53,7 @@ describe("Polygon Mainnet Balancer TUSD Stable", function() {
     underlying = await IERC20.at("0x0d34e5dD4D8f043557145598E4e2dC286B35FD4f");
     bal = await IERC20.at(balAddr);
     tusd = await IERC20.at(tusdAddr);
+    wmatic = await WMATIC.at(addresses.WMATIC);
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
@@ -114,7 +119,8 @@ describe("Polygon Mainnet Balancer TUSD Stable", function() {
 
         await bal.transfer(strategy.address, "100" + "000000000000000000", {from: balHolder});
         await tusd.transfer(strategy.address, "100" + "000000000000000000", {from: tusdHolder});
-        await send.ether(accounts[9], strategy.address, "100" + "000000000000000000");
+        await wmatic.deposit({from: accounts[9], value: "100" + "000000000000000000"});
+        await wmatic.transfer(strategy.address, "100" + "000000000000000000", {from: accounts[9]});
 
         await Utils.advanceNBlock(blocksPerHour);
       }
