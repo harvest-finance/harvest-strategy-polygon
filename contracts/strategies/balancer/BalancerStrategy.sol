@@ -167,32 +167,14 @@ contract BalancerStrategy is BaseUpgradeableStrategy {
 
     for(uint256 i = 0; i < rewardTokens.length; i++){
       address token = rewardTokens[i];
-      uint256 rewardBalance;
-      if (token == wmatic) {
-        rewardBalance = address(this).balance;
-      } else {
-        rewardBalance = IERC20(token).balanceOf(address(this));
-      }
+      uint256 rewardBalance = IERC20(token).balanceOf(address(this));
+
       uint256 toLiquidate = rewardBalance.mul(_liquidationRatio).div(1000);
       if (toLiquidate == 0) {
         continue;
       }
       if (token == bal) {
         _bal2WETH(toLiquidate);
-      } else if (token == wmatic) {
-        if (reward2WETH[token].length < 2) {
-          continue;
-        }
-        address routerV2;
-        if(useQuick[token]) {
-          routerV2 = quickswapRouterV2;
-        } else {
-          routerV2 = sushiswapRouterV2;
-        }
-        // we can accept 1 as the minimum because this will be called only by a trusted worker
-        IUniswapV2Router02(routerV2).swapExactETHForTokens{value: toLiquidate}(
-          1, reward2WETH[token], address(this), block.timestamp
-        );
       } else {
         if (reward2WETH[token].length < 2) {
           continue;
