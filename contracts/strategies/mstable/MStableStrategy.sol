@@ -43,12 +43,13 @@ contract MStableStrategy is BaseUpgradeableStrategy {
         assert(_SAVINGS_CONTRACT == bytes32(uint256(keccak256("eip1967.strategyStorage.savingsContract")) - 1));
     }
 
-    function _initializeStrategy(
+    function _initializeBaseStrategy(
         address _storage,
         address _underlying,
         address _vault,
         address _rewardPool,
-        address _rewardToken
+        address _rewardToken,
+        address _savingsContract
     ) public initializer {
         BaseUpgradeableStrategy.initialize(
             _storage,
@@ -59,10 +60,11 @@ contract MStableStrategy is BaseUpgradeableStrategy {
             80, // profit sharing numerator
             1000, // profit sharing denominator
             true, // sell
-            1e18, // sell floor
+            0, // sell floor
             12 hours // implementation change delay
         );
-
+        require(address(ISavingsContract(_savingsContract).underlying()) == underlying(), 'underlying does not match savings contract underlying');
+        setAddress(_SAVINGS_CONTRACT, _savingsContract);
         rewardTokens = new address[](0);
     }
 
@@ -169,29 +171,6 @@ contract MStableStrategy is BaseUpgradeableStrategy {
         _setPausedInvesting(false);
     }
 
-    function shouldSell() internal returns(bool) {
-        if(!sell()) {
-            return false;
-        }
-
-        // get total balance in all reward tokens. not perfect, but it's something
-        uint256 totalBalance = 0;
-        for(uint256 i = 0; i < rewardTokens.length; i++){
-            address token = rewardTokens[i];
-            uint256 rewardBalance = IERC20(token).balanceOf(address(this));
-            totalBalance = totalBalance.add(rewardBalance);
-        }
-
-        if (totalBalance < sellFloor()) {
-            // Profits can be disabled for possible simplified and rapid exit
-            emit ProfitsNotCollected(sell(), totalBalance < sellFloor());
-            return false;
-        }
-        
-        return true;
-    }
-
-
     function swapViaBalancer(address from, address to, uint256 amount) internal {
         //swap bal to weth on balancer
         IBVault.SingleSwap memory singleSwap;
@@ -272,9 +251,8 @@ contract MStableStrategy is BaseUpgradeableStrategy {
             address token = rewardTokens[i];
             uint256 rewardBalance = IERC20(token).balanceOf(address(this));
             if (rewardBalance == 0 || storedLiquidationDexes[token][rewardToken()].length < 1) {
-                continue;
+              continue;
             }
-
             swapViaDex(token, rewardToken(), rewardBalance);
         }
     }
@@ -297,8 +275,9 @@ contract MStableStrategy is BaseUpgradeableStrategy {
     }
 
     function liquidateReward() internal {
-        if (!shouldSell()) {
-            return;
+        if (!sell()) {
+          emit ProfitsNotCollected(sell(), false);
+          return;
         }
 
         // MTA and WMATIC to WETH

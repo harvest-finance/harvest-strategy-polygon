@@ -16,7 +16,7 @@ const IERC20 = artifacts.require("IERC20");
 
 const Strategy = artifacts.require("MStableStrategyMainnet_mUSD");
 
-// Developed and tested at blockNumber 20604046
+// Developed and tested at blockNumber 23439275
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
 describe("Polygon Mainnet mStable mUSD", function() {
@@ -26,7 +26,7 @@ describe("Polygon Mainnet mStable mUSD", function() {
   let underlying;
 
   // external setup
-  let underlyingWhale = "0x0C2eF8a1b3Bc00Bf676053732F31a67ebbA5bD81";
+  let underlyingWhale = "0x5084f622cbDf1E22E473d66d97916524745B9b6e";
 
   // parties in the protocol
   let governance;
