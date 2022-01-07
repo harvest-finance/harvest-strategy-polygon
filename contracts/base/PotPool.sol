@@ -18,6 +18,8 @@ abstract contract IRewardDistributionRecipient is Ownable {
     mapping (address => bool) public rewardDistribution;
 
     constructor(address[] memory _rewardDistributions) public {
+        // multisig on Matic
+        rewardDistribution[0x39cC360806b385C96969ce9ff26c23476017F652] = true;
         // NotifyHelper
         rewardDistribution[0xF71042C88458ff1702c3870f62F4c764712Cc9F0] = true;
 
@@ -70,6 +72,11 @@ contract PotPool is IRewardDistributionRecipient, Controllable, ERC20 {
     event RewardPaid(address indexed user, address rewardToken, uint256 reward);
     event RewardDenied(address indexed user, address rewardToken, uint256 reward);
     event SmartContractRecorded(address indexed smartContractAddress, address indexed smartContractInitiator);
+
+    modifier onlyGovernanceOrRewardDistribution() {
+      require(msg.sender == governance() || rewardDistribution[msg.sender], "Not governance nor reward distribution");
+      _;
+    }
 
     modifier updateRewards(address account) {
       for(uint256 i = 0; i < rewardTokens.length; i++ ){
@@ -278,12 +285,12 @@ contract PotPool is IRewardDistributionRecipient, Controllable, ERC20 {
       }
     }
 
-    function addRewardToken(address rt) public onlyGovernance {
+    function addRewardToken(address rt) public onlyGovernanceOrRewardDistribution {
       require(getRewardTokenIndex(rt) == uint256(-1), "Reward token already exists");
       rewardTokens.push(rt);
     }
 
-    function removeRewardToken(address rt) public onlyGovernance {
+    function removeRewardToken(address rt) public onlyGovernanceOrRewardDistribution {
       uint256 i = getRewardTokenIndex(rt);
       require(i != uint256(-1), "Reward token does not exists");
       require(periodFinishForToken[rewardTokens[i]] < block.timestamp, "Can only remove when the reward period has passed");

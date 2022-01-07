@@ -3,10 +3,17 @@
 pragma solidity 0.6.12;
 
 interface IVault {
+
+    function initializeVault(
+      address _storage,
+      address _underlying,
+      uint256 _toInvestNumerator,
+      uint256 _toInvestDenominator
+    ) external ;
+
     function underlyingBalanceInVault() external view returns (uint256);
     function underlyingBalanceWithInvestment() external view returns (uint256);
 
-    // function store() external view returns (address);
     function underlying() external view returns (address);
     function strategy() external view returns (address);
 

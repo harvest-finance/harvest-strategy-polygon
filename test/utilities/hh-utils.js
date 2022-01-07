@@ -6,6 +6,7 @@ const IUniswapRouterV2 = artifacts.require("contracts/base/interface/uniswap/IUn
 const IERC20 = artifacts.require("IERC20");
 const Vault = artifacts.require("Vault");
 const WMATIC = artifacts.require("WMATIC")
+const IUpgradeableStrategy = artifacts.require("IUpgradeableStrategy");
 
 const Utils = require("./Utils.js");
 
@@ -130,13 +131,15 @@ async function setupCoreProtocol(config) {
     }
   }
 
+  let strategyImpl = null;
+
   if (!config.strategyArtifactIsUpgradable) {
     strategy = await config.strategyArtifact.new(
       ...config.strategyArgs,
       { from: config.governance }
     );
   } else {
-    const strategyImpl = await config.strategyArtifact.new();
+    strategyImpl = await config.strategyArtifact.new();
     const StrategyProxy = artifacts.require("StrategyProxy");
 
     const strategyProxy = await StrategyProxy.new(strategyImpl.address);
@@ -169,6 +172,16 @@ async function setupCoreProtocol(config) {
     await vault.setStrategy(strategy.address, { from: config.governance });
     await vault.setVaultFractionToInvest(100, 100, { from: config.governance });
     console.log("Strategy switch completed.");
+  } else if (config.upgradeStrategy === true) {
+    // Announce upgrade, time pass, upgrade the strategy
+    const strategyAsUpgradable = await IUpgradeableStrategy.at(await vault.strategy());
+    await strategyAsUpgradable.scheduleUpgrade(strategyImpl.address, { from: config.governance });
+    console.log("Upgrade scheduled. Waiting...");
+    await Utils.waitHours(13);
+    await strategyAsUpgradable.upgrade({ from: config.governance });
+    await vault.setVaultFractionToInvest(100, 100, { from: config.governance });
+    strategy = await config.strategyArtifact.at(await vault.strategy());
+    console.log("Strategy upgrade completed.");
   } else {
     await controller.addVaultAndStrategy(
       vault.address,
