@@ -80,7 +80,7 @@ contract JarvisStrategyV3 is  BaseUpgradeableStrategy {
                   STORAGE SETTER AND GETTER
   //////////////////////////////////////////////////////////////*/
 
-  function setRewardLpToken1(address _value) public onlyGovernance {
+  function setRewardLpToken1(address _value) internal {
     setAddress(_REWARD_LP_TOKEN1_SLOT, _value);
   }
 

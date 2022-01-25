@@ -69,11 +69,9 @@ contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
     (_lpt,,,) = IElysianFields(rewardPool()).poolInfo(_poolId);
     require(_lpt == underlying(), "Pool Info does not match underlying");
     _setPoolId(_poolId);
-    setAddress(_REWARD_LP_SLOT, _rewardLp);
     setAddress(_HODLVAULT_SLOT, _hodlVault);
     setAddress(_POTPOOL_SLOT, _potPool);
-    address rewardLpToken1 = (IDMMPool(rewardLp()).token0() == rewardToken()) ? IDMMPool(rewardLp()).token1() : IDMMPool(rewardLp()).token0();
-    setAddress(_REWARD_LP_TOKEN1_SLOT, rewardLpToken1);
+    setRewardLp(_rewardLp);
   }
 
   function depositArbCheck() public pure returns(bool) {
@@ -253,16 +251,18 @@ contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
     return getAddress(_POTPOOL_SLOT);
   }
 
-  function setRewardLp(address _value) public onlyGovernance {
+  function setRewardLp(address _value) internal {
+    address token0 = IDMMPool(_value).token0();
+    address token1 = IDMMPool(_value).token1();
+    require(token0 == rewardToken() || token1 == rewardToken(), "One of the underlying DMM pool token is not equal to the rewardToken");
     setAddress(_REWARD_LP_SLOT, _value);
+    // select the token that isn't the rewardToken, s.t.
+    address rewardLpToken1 = (token0 == rewardToken()) ? token1 : token0;
+    setAddress(_REWARD_LP_TOKEN1_SLOT, rewardLpToken1);
   }
 
   function rewardLp() public view returns (address) {
     return getAddress(_REWARD_LP_SLOT);
-  }
-
-  function setRewardLpToken1(address _value) public onlyGovernance {
-    setAddress(_REWARD_LP_TOKEN1_SLOT, _value);
   }
 
   function rewardLpToken1() public view returns (address) {
@@ -271,6 +271,14 @@ contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
 
   function finalizeUpgrade() external onlyGovernance {
     _finalizeUpgrade();
+
+    updateRewardPool(
+      0x9c802D12Da5C7c74104d8cAD9E6084E32c2B70B7, // new rewardPool
+      0xa286eeDAa5aBbAE98F65b152B5057b8bE9893fbB, // DEN-MAR22
+      0xEb6f426963140471a7c1E4337877e6dBf834d2A8, // DEN-MAR22 - 4EUR LP
+      0,
+      0x8cccdEBF657F072D83B2d94068C4377a3BA91e08  // new hodl vault
+      );
   }
 
   // masterchef rewards pool ID
@@ -280,5 +288,28 @@ contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
 
   function poolId() public view returns (uint256) {
     return getUint256(_POOLID_SLOT);
+  }
+
+  function updateRewardPool(
+    address _newRewardPool,
+    address _newRewardToken,
+    address _newRewardLP,
+    uint256 _newPoolId,
+    address _newHodlVault
+    ) public onlyGovernance {
+    address _lpt;
+    (_lpt,,,) = IElysianFields(_newRewardPool).poolInfo(_newPoolId);
+    require(_lpt == underlying(), "Pool Info does not match underlying");
+
+    exitRewardPool();
+
+    _setRewardToken(_newRewardToken);
+    _setRewardPool(_newRewardPool);
+    _setPoolId(_newPoolId);
+
+    setRewardLp(_newRewardLP);
+    setAddress(_HODLVAULT_SLOT, _newHodlVault);
+
+    investAllUnderlying();
   }
 }
