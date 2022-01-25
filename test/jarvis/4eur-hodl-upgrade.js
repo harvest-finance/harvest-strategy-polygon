@@ -8,12 +8,12 @@ const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20");
 const Vault = artifacts.require("Vault");
 
-const Strategy = artifacts.require("JarvisHodlStrategyV2Mainnet_4EUR");
+const Strategy = artifacts.require("JarvisHodlStrategyV2Mainnet_4EUR_V2");
 const PotPool = artifacts.require("PotPool");
 
 const D18 = new BigNumber(Math.pow(10, 18));
 
-//This test was developed at blockNumber 24152600
+//This test was developed at blockNumber 24155700
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
 describe("Mainnet Jarvis 4EUR HODL in LP", function() {
@@ -108,15 +108,21 @@ describe("Mainnet Jarvis 4EUR HODL in LP", function() {
         console.log("loop ", i);
 
         oldSharePrice = new BigNumber(await vault.getPricePerFullShare());
+        console.log(oldSharePrice.toFixed())
         oldHodlSharePrice = new BigNumber(await hodlVault.getPricePerFullShare());
+        console.log(oldHodlSharePrice.toFixed())
         oldPotPoolBalance = new BigNumber(await hodlVault.balanceOf(potPool.address));
+        console.log(oldPotPoolBalance.toFixed())
         await controller.doHardWork(vault.address, {from: governance});
         await controller.doHardWork(hodlVault.address, {from: governance});
         newSharePrice = new BigNumber(await vault.getPricePerFullShare());
+        console.log(newSharePrice.toFixed())
         newHodlSharePrice = new BigNumber(await hodlVault.getPricePerFullShare());
+        console.log(newHodlSharePrice.toFixed())
         newPotPoolBalance = new BigNumber(await hodlVault.balanceOf(potPool.address));
+        console.log(newPotPoolBalance.toFixed())
 
-        hodlPrice = new BigNumber(119.387).times(D18);
+        hodlPrice = new BigNumber(100).times(D18);
         lpPrice = new BigNumber(1.1255).times(D18);
         console.log("Hodl price:", hodlPrice.toFixed()/D18.toFixed());
         console.log("LP price:", lpPrice.toFixed()/D18.toFixed());
