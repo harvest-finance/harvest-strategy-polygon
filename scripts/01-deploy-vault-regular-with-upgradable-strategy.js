@@ -1,5 +1,6 @@
 const prompt = require('prompt');
 const hre = require("hardhat");
+const { type2Transaction } = require('./utils.js');
 
 function cleanupObj(d) {
   for (let i = 0; i < 10; i++) delete d[String(i)];
@@ -19,12 +20,11 @@ async function main() {
   const factory = await MegaFactory.at(addresses.Factory.MegaFactory);
 
   const StrategyImpl = artifacts.require(strategyName);
-  const impl = await StrategyImpl.new();
-  console.log("Implementation deployed at:", impl.address);
+  const impl = await type2Transaction(StrategyImpl.new);
 
-  await factory.createRegularVaultUsingUpgradableStrategy(
-    id, underlying, impl.address
-  );
+  console.log("Implementation deployed at:", impl.creates);
+
+  await type2Transaction(factory.createRegularVaultUsingUpgradableStrategy, id, underlying, impl.creates)
 
   const deployment = cleanupObj(await factory.completedDeployments(id));
   console.log("======");

@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-web3");
+require("@nomiclabs/hardhat-ethers");
 require('hardhat-deploy');
 
 const secret = require('./dev-keys.json');
@@ -22,7 +23,7 @@ module.exports = {
       chainId: 137,
       forking: {
         url: `https://polygon-mainnet.g.alchemy.com/v2/${secret.alchemyKey}`,
-        // blockNumber: 21244600, // <-- edit here
+        blockNumber: 24152600, // <-- edit here
       },
     },
     mainnet: {
@@ -30,8 +31,6 @@ module.exports = {
       accounts: {
         mnemonic: secret.mnemonic,
       },
-      gas: 9000000,
-      gasPrice: 35e9,
     },
   },
   solidity: {
