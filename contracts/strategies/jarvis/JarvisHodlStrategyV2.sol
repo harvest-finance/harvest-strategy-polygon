@@ -269,16 +269,8 @@ contract JarvisHodlStrategyV2 is BaseUpgradeableStrategy {
     return getAddress(_REWARD_LP_TOKEN1_SLOT);
   }
 
-  function finalizeUpgrade() external onlyGovernance {
+  function finalizeUpgrade() external virtual onlyGovernance {
     _finalizeUpgrade();
-
-    updateRewardPool(
-      0x9c802D12Da5C7c74104d8cAD9E6084E32c2B70B7, // new rewardPool
-      0xa286eeDAa5aBbAE98F65b152B5057b8bE9893fbB, // DEN-MAR22
-      0xEb6f426963140471a7c1E4337877e6dBf834d2A8, // DEN-MAR22 - 4EUR LP
-      0,
-      0x8cccdEBF657F072D83B2d94068C4377a3BA91e08  // new hodl vault
-      );
   }
 
   // masterchef rewards pool ID
