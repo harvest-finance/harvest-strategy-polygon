@@ -2,13 +2,13 @@
 const Utils = require("../utilities/Utils.js");
 const { impersonates, setupCoreProtocol, depositVault } = require("../utilities/hh-utils.js");
 
-const addresses = require("../test-config.js");
-const { send } = require("@openzeppelin/test-helpers");
 const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20");
 
 const HodlStrategy = artifacts.require("JarvisStrategyV3Mainnet_SES_2JPY");
 const Strategy = artifacts.require("JarvisHodlStrategyV3Mainnet_2JPY");
+const CurvePool = artifacts.require("ICurveDeposit_2token");
+const IDMMPool = artifacts.require("IDMMPool");
 
 const D18 = new BigNumber(Math.pow(10, 18));
 
@@ -24,6 +24,7 @@ describe("Mainnet Jarvis 2JPY HODL in LP", function() {
   // external setup
   let underlyingWhale = "0xc91faf934708a5e3b3ff8ed212904c4efd2aaf57";
   let hodlUnderlying = "0x3b76F90A8ab3EA7f0EA717F34ec65d194E5e9737";
+  let curvePoolAddr = "0xE8dCeA7Fb2Baf7a9F4d9af608F06d78a687F8d9A";
 
   // parties in the protocol
   let governance;
@@ -118,6 +119,50 @@ describe("Mainnet Jarvis 2JPY HODL in LP", function() {
       let lpPrice;
       let oldValue;
       let newValue;
+      let curvePool;
+      let dmmPool;
+
+      curvePool = await CurvePool.at(curvePoolAddr);
+      lpPrice = new BigNumber(await curvePool.get_virtual_price());
+      hodlPrice = new BigNumber(119.387).times(D18);
+      dmmPool = await IDMMPool.at(hodlUnderlying);
+      console.log("total supply of DMM pool lp tokens: ", new BigNumber(await dmmPool.totalSupply()).toFixed());
+
+      const tradeInfo = await dmmPool.getTradeInfo();
+      var {0: reserve0, 1: reserve1, 2: vReserve0, 3: vReserve1, 4: feeInPrecision} = tradeInfo;
+
+      // token0: Sestertius (SES-FEB22)
+      // token1: Curve.fi Factory Plain Pool: 2jpy (2jpy-f)
+
+      console.log("DMM pool reserve0: ", new BigNumber(reserve0).toFixed());
+      console.log("DMM pool reserve1: ", new BigNumber(reserve1).toFixed());
+      console.log("DMM pool vReserve0: ", new BigNumber(vReserve0).toFixed());
+      console.log("DMM pool vReserve1: ", new BigNumber(vReserve1).toFixed());
+
+      // 1 SES-FEB22 = 66220 2jpy-f from https://kyberswap.com/#/add/0x9120ECada8dc70Dc62cBD49f58e861a09bf83788/0xE8dCeA7Fb2Baf7a9F4d9af608F06d78a687F8d9A/0x3b76F90A8ab3EA7f0EA717F34ec65d194E5e9737 (02.02.2022)
+      console.log("Exchange rate: ", new BigNumber(vReserve1).div(new BigNumber(vReserve0)).toFixed() );
+
+      // all pool SES-FEB22 tokens in 2jpy-f value
+      let token0Amount = (new BigNumber(reserve0).toFixed()/D18.toFixed());
+      console.log("token0Amount: ", token0Amount);
+
+      let token1Amount = (new BigNumber(reserve1).toFixed()/D18.toFixed());
+      console.log("token1Amount: ", token1Amount)
+
+      let lpTokenAmount = new BigNumber(await dmmPool.totalSupply()).toFixed()/D18.toFixed();
+      console.log("lpTokenAmount: ", lpTokenAmount);
+
+      let token0inToken1Value = token0Amount*(new BigNumber(vReserve1).div(new BigNumber(vReserve0)).toFixed())
+      console.log("pool SES-FEB22 tokens in 2jpy-f unit: ", token0inToken1Value);
+      hodlPriceNew = ((token0inToken1Value + token1Amount) * (lpPrice.toFixed()/D18.toFixed())) / lpTokenAmount;
+
+      console.log("hodlPriceNew: ", hodlPriceNew);
+      
+      hodlPrice = new BigNumber(hodlPriceNew).times(D18);
+
+      console.log("Hodl price:", hodlPrice.toFixed()/D18.toFixed());
+      console.log("LP price:", lpPrice.toFixed()/D18.toFixed());
+
       for (let i = 0; i < hours; i++) {
         console.log("loop ", i);
 
@@ -130,13 +175,26 @@ describe("Mainnet Jarvis 2JPY HODL in LP", function() {
         newHodlSharePrice = new BigNumber(await hodlVault.getPricePerFullShare());
         newPotPoolBalance = new BigNumber(await hodlVault.balanceOf(potPool.address));
 
+        // https://kyberswap.com/#/pools/0xE8dCeA7Fb2Baf7a9F4d9af608F06d78a687F8d9A/0x9120ECada8dc70Dc62cBD49f58e861a09bf83788
 
-        hodlPrice = new BigNumber(119.387).times(D18);
-        lpPrice = new BigNumber(1.1255).times(D18);
-        console.log("Hodl price:", hodlPrice.toFixed()/D18.toFixed());
-        console.log("LP price:", lpPrice.toFixed()/D18.toFixed());
-        
+        // info about Kyber DMM pool: https://chainsecurity.com/wp-content/uploads/2021/04/ChainSecurity_KyberNetwork_DMM_Dynamic-Market-Making_Final.pdf
+        // reserves use the Amplification Model. Instead of the inventory function x*y = k 
+        // Kyber DMM pool uses x * y = k * a^2
+        // All invariants related to swapping are based on the virtualReserves.
+        // All invariants related to adding or removing liquidity are based on the values of the "traditional" reserves
+
+        // ftokenBalance: amount of f2JPY of farmer1
+        // oldSharePrice: vault (f2JPY strategy) share price: underlyingUnit().mul(underlyingBalanceWithInvestment()).div(totalSupply());
+        // lpPrice (underlying of f2JPY): price of 2jpy in virtual price of curve lp ("average dollar value of pool token")
+
+        // oldPotPoolBalance: amount of fSES-2JPY that the PotPool holds
+        // oldHodlSharePrice: vault (fSES-2JPY) share price: underlyingUnit().mul(underlyingBalanceWithInvestment()).div(totalSupply());
+        // hodlPrice (underlying of fSES-2JPY): price of KyberDMM LP SES-FEB22-2jpy in 
+
+        // oldValue = (fTokenBalance * oldSharePrice * lpPrice) / 1e36 + (oldPotPoolBalance * oldHodlSharePrice * hodlPrice) / 1e36
         oldValue = (fTokenBalance.times(oldSharePrice).times(lpPrice)).div(1e36).plus((oldPotPoolBalance.times(oldHodlSharePrice).times(hodlPrice)).div(1e36));
+
+        // newValue = (fTokenBalance * newSharePrice * lpPrice) / 1e36 + (newPotPoolBalance * newHodlSharePrice * hodlPrice) / 1e36
         newValue = (fTokenBalance.times(newSharePrice).times(lpPrice)).div(1e36).plus((newPotPoolBalance.times(newHodlSharePrice).times(hodlPrice)).div(1e36));
 
         console.log("old value: ", oldValue.toFixed()/D18.toFixed());
