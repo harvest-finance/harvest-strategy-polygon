@@ -17,6 +17,7 @@ contract JarvisHodlStrategyV3Mainnet_2JPY is JarvisHodlStrategyV3 {
     address rewardLp_ = address(0x3b76F90A8ab3EA7f0EA717F34ec65d194E5e9737);
     address rewardPool_ = address(0xeb4a4Ba3EF5e3A286Dc49408C27F9BDaA286db84);
     address rewardToken_ = address(0x9120ECada8dc70Dc62cBD49f58e861a09bf83788);
+    address hodlVault_ = address(0x483d1e18E67bF69ef555c798807DaDbE7757311D);
 
     JarvisHodlStrategyV3.initializeBaseStrategy({
     __storage: __storage,
@@ -26,7 +27,7 @@ contract JarvisHodlStrategyV3Mainnet_2JPY is JarvisHodlStrategyV3 {
     _rewardToken: rewardToken_,
     _poolId: 0,
     _rewardLp: rewardLp_,
-    _hodlVault: address(0x0000000000000000000000000000000000000000), // manually set it later
+    _hodlVault: hodlVault_,
     _potPool: address(0x0000000000000000000000000000000000000000) // manually set it later
     });
   }

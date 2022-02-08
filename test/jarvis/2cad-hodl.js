@@ -22,7 +22,7 @@ describe("Mainnet Jarvis 2CAD HODL in LP", function() {
   let underlying;
 
   // external setup
-  let underlyingWhale = "0x4250cE10651f46DF2b0dB7EAF4d417F6c3a93266";
+  let underlyingWhale = "0xcBf28C456cc9b2907D336018CD0F2c72cD65F6ce";
   let hodlUnderlying = "0x32d8513eDDa5AEf930080F15270984A043933A95";
 
   // parties in the protocol

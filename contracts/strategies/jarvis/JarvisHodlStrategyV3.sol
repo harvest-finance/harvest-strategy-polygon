@@ -75,17 +75,9 @@ contract JarvisHodlStrategyV3 is BaseUpgradeableStrategy {
     require(_lpt == _underlying, "Pool Info does not match underlying");
 
     _setPoolId(_poolId);
-    setAddress(_REWARD_LP_SLOT, _rewardLp);
     setAddress(_HODLVAULT_SLOT, _hodlVault);
     setAddress(_POTPOOL_SLOT, _potPool);
-
-    address token0 = IDMMPool(_rewardLp).token0();
-    address token1 = IDMMPool(_rewardLp).token1();
-    require(token0 == _rewardToken || token1 == _rewardToken, "One of the underlying DMM pool token is not equal to the rewardToken");
-
-    address rewardLpToken1 = (token0 == _rewardToken) ? token1 : token0;
-
-    setAddress(_REWARD_LP_TOKEN1_SLOT, rewardLpToken1);
+    setRewardLp(_rewardLp);
   }
 
   /*///////////////////////////////////////////////////////////////
@@ -110,16 +102,18 @@ contract JarvisHodlStrategyV3 is BaseUpgradeableStrategy {
     return getAddress(_POTPOOL_SLOT);
   }
 
-  function setRewardLp(address _value) public onlyGovernance {
+  function setRewardLp(address _value) internal {
+    address token0 = IDMMPool(_value).token0();
+    address token1 = IDMMPool(_value).token1();
+    require(token0 == rewardToken() || token1 == rewardToken(), "One of the underlying DMM pool token is not equal to the rewardToken");
     setAddress(_REWARD_LP_SLOT, _value);
+    // select the token that isn't the rewardToken, s.t.
+    address rewardLpToken1 = (token0 == rewardToken()) ? token1 : token0;
+    setAddress(_REWARD_LP_TOKEN1_SLOT, rewardLpToken1);
   }
 
   function rewardLp() public view returns (address) {
     return getAddress(_REWARD_LP_SLOT);
-  }
-
-  function setRewardLpToken1(address _value) public onlyGovernance {
-    setAddress(_REWARD_LP_TOKEN1_SLOT, _value);
   }
 
   function rewardLpToken1() public view returns (address) {
@@ -133,6 +127,29 @@ contract JarvisHodlStrategyV3 is BaseUpgradeableStrategy {
 
   function poolId() public view returns (uint256) {
     return getUint256(_POOLID_SLOT);
+  }
+
+  function updateRewardPool(
+    address _newRewardPool,
+    address _newRewardToken,
+    address _newRewardLP,
+    uint256 _newPoolId,
+    address _newHodlVault
+    ) public onlyGovernance {
+    address _lpt;
+    (_lpt,,,) = IElysianFields(_newRewardPool).poolInfo(_newPoolId);
+    require(_lpt == underlying(), "Pool Info does not match underlying");
+
+    _exitRewardPool();
+
+    _setRewardToken(_newRewardToken);
+    _setRewardPool(_newRewardPool);
+    _setPoolId(_newPoolId);
+
+    setRewardLp(_newRewardLP);
+    setAddress(_HODLVAULT_SLOT, _newHodlVault);
+
+    investAllUnderlying();
   }
 
   /*///////////////////////////////////////////////////////////////

@@ -1,11 +1,17 @@
 async function getFeeData() {
   const feeData = await ethers.provider.getFeeData();
-  feeData.maxPriorityFeePerGas = feeData.maxFeePerGas/2;
+  feeData.maxPriorityFeePerGas = 35e9;
+  if (feeData.maxFeePerGas < feeData.maxPriorityFeePerGas) {
+    feeData.maxFeePerGas = Number(feeData.maxFeePerGas) + Number(feeData.maxPriorityFeePerGas);
+  }
   if (feeData.maxFeePerGas > 1000e9) {
     feeData.maxFeePerGas = 1000e9;
   }
-  if (feeData.maxPriorityFeePerGas > 30e9) {
-    feeData.maxPriorityFeePerGas = 30e9;
+  if (feeData.maxFeePerGas / 3 > 35e9) {
+    feeData.maxPriorityFeePerGas = feeData.maxFeePerGas / 3;
+    if (feeData.maxPriorityFeePerGas > 150e9) {
+      feeData.maxPriorityFeePerGas = 150e9;
+    }
   }
   return feeData;
 }
