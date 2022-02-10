@@ -10,8 +10,7 @@ function cleanupObj(d) {
 
 async function main() {
   console.log("Regular vault deployment with upgradable strategy.");
-  console.log("> Prerequisite: deploy upgradable strategy implementation");
-  console.log("Specify a unique ID (for the JSON), vault's underlying token address, and upgradable strategy implementation address");
+  console.log("Specify a unique ID (for the JSON), vault's underlying token address, and upgradable strategy implementation name");
   prompt.start();
   const addresses = require("../test/test-config.js");
   const MegaFactory = artifacts.require("MegaFactory");
