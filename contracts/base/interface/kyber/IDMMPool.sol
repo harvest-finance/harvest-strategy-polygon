@@ -2,6 +2,8 @@
 pragma solidity 0.6.12;
 
 interface IDMMPool {
+    function totalSupply() external view returns (uint256);
+
     function mint(address to) external returns (uint256 liquidity);
 
     function burn(address to) external returns (uint256 amount0, uint256 amount1);
