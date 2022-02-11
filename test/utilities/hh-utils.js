@@ -108,8 +108,8 @@ async function setupCoreProtocol(config) {
       console.log("New NoMintRewardPool deployed: ", rewardPool.address);
     }
   } else if(config.existingRewardPoolAddress != null) {
-    const NoMintRewardPool = artifacts.require("NoMintRewardPool");
-    rewardPool = await NoMintRewardPool.at(config.existingRewardPoolAddress);
+    const PotPool = artifacts.require("PotPool");
+    rewardPool = await PotPool.at(config.existingRewardPoolAddress);
     console.log("Fetching Reward Pool deployed: ", rewardPool.address);
   }
 
