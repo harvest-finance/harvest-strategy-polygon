@@ -34,5 +34,6 @@ contract CurveStrategyEurtusdMainnet is CurveStrategy {
     WETH2deposit = [weth, dai];
     rewardTokens = [crv];
     useQuick[crv] = false;
+    useQuick[dai] = false;
   }
 }
