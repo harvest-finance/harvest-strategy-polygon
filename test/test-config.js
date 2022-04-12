@@ -8,7 +8,7 @@ module.exports = {
   "VaultImplementationV1": "0xCf5F83F8FE0AB0f9E9C1db07E6606dD598b2bbf5",
   "Factory": {
     "VaultFactory": "0x1C527AC27F364Ef4482A27D61883D482A38F3F48",
-    "PotPoolFactory": "0xCFc99124eCABcB7B87C80253982496bca4B4b379",
+    "PotPoolFactory": "0x19Faae327f6cC58B3841850240840639bc0Eedd9",
     "MegaFactory": "0xc318fC4ed80244091d81F72a4EAe6645bBdAC217",
     "UpgradableStrategyFactory": "0x96b842Dcab95194700e1A39685AE7B3EF23777e2"
   }
