@@ -5,8 +5,6 @@ import "../Vault.sol";
 import "../interface/curve/ICurveDeposit_2token.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "hardhat/console.sol";
-
 interface IJPYCSwap {
   function swap() external;
 }
