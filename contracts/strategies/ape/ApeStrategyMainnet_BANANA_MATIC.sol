@@ -25,15 +25,12 @@ contract ApeStrategyMainnet_BANANA_MATIC is MiniApeV2Strategy {
       _vault, 
       miniApe, 
       banana, 
-      wmatic,
-      0,
-      true
+      0
     );
 
     require(IVault(_vault).underlying() == banana_matic, "Underlying mismatch");
     
     uniswapRoutes[wmatic] = [banana, wmatic];
     uniswapRoutes[weth] = [banana, wmatic, weth];
-    secondRewardRoute = [wmatic, banana];
   }
 }

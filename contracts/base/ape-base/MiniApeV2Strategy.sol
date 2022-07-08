@@ -22,17 +22,12 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
 
   // additional storage slots (on top of BaseUpgradeableStrategy ones) are defined here
   bytes32 internal constant _POOLID_SLOT = 0x3fd729bfa2e28b7806b03a6e014729f59477b530f995be4d51defc9dad94810b;
-  bytes32 internal constant _IS_LP_ASSET_SLOT = 0xc2f3dabf55b1bdda20d5cf5fcba9ba765dfc7c9dbaf28674ce46d43d60d58768;
-  bytes32 internal constant _SECOND_REWARD_TOKEN_SLOT = 0xd06e5f1f8ce4bdaf44326772fc9785917d444f120d759a01f1f440e0a42d67a3;
 
   // this would be reset on each upgrade
   mapping (address => address[]) public uniswapRoutes;
-  address[] public secondRewardRoute;
 
   constructor() public BaseUpgradeableStrategy() {
     assert(_POOLID_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.poolId")) - 1));
-    assert(_IS_LP_ASSET_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.isLpAsset")) - 1));
-    assert(_SECOND_REWARD_TOKEN_SLOT == bytes32(uint256(keccak256("eip1967.strategyStorage.secondRewardToken")) - 1));
   }
 
   function initializeBaseStrategy(
@@ -41,9 +36,7 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
     address _vault,
     address _rewardPool,
     address _rewardToken,
-    address _secondRewardToken,
-    uint256 _poolID,
-    bool _isLpAsset
+    uint256 _poolID
   ) public initializer {
 
     BaseUpgradeableStrategy.initialize(
@@ -59,25 +52,16 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
       12 hours // implementation change delay
     );
 
-    IERC20 _lpt;
-    _lpt = IMiniChefV2(rewardPool()).lpToken(_poolID);
-    require(address(_lpt) == underlying(), "Pool Info does not match underlying");
+    require(address(IMiniChefV2(rewardPool()).lpToken(_poolID)) == underlying(), "Pool Info does not match underlying");
     _setPoolId(_poolID);
 
-    _setSecondRewardToken(_secondRewardToken);
+    address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
+    address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
 
-    if (_isLpAsset) {
-      address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
-      address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
+    // these would be required to be initialized separately by governance
+    uniswapRoutes[uniLPComponentToken0] = new address[](0);
+    uniswapRoutes[uniLPComponentToken1] = new address[](0);
 
-      // these would be required to be initialized separately by governance
-      uniswapRoutes[uniLPComponentToken0] = new address[](0);
-      uniswapRoutes[uniLPComponentToken1] = new address[](0);
-    } else {
-      uniswapRoutes[underlying()] = new address[](0);
-    }
-
-    setBoolean(_IS_LP_ASSET_SLOT, _isLpAsset);
   }
 
   function depositArbCheck() public pure returns(bool) {
@@ -144,23 +128,6 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
     // we can accept 1 as minimum because this is called only by a trusted role
     uint256 amountOutMin = 1;
 
-    // swap second reward token to reward token
-    uint256 secondRewardBalance = IERC20(secondRewardToken()).balanceOf(address(this));
-
-    // allow Uniswap to sell our reward
-    IERC20(secondRewardToken()).safeApprove(apeswapRouterV2, 0);
-    IERC20(secondRewardToken()).safeApprove(apeswapRouterV2, secondRewardBalance);
-
-    if (secondRewardBalance > 0) {
-      IUniswapV2Router02(apeswapRouterV2).swapExactTokensForTokens(
-        secondRewardBalance,
-        amountOutMin,
-        secondRewardRoute,
-        address(this),
-        block.timestamp
-      );
-    }
-
     uint256 rewardBalance = IERC20(rewardToken()).balanceOf(address(this));
     if (!sell() || rewardBalance < sellFloor()) {
       // Profits can be disabled for possible simplified and rapid exit
@@ -179,74 +146,66 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
     IERC20(rewardToken()).safeApprove(apeswapRouterV2, 0);
     IERC20(rewardToken()).safeApprove(apeswapRouterV2, remainingRewardBalance);
 
-    if (isLpAsset()) {
-      address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
-      address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
 
-      uint256 toToken0 = remainingRewardBalance.div(2);
-      uint256 toToken1 = remainingRewardBalance.sub(toToken0);
+    address uniLPComponentToken0 = IUniswapV2Pair(underlying()).token0();
+    address uniLPComponentToken1 = IUniswapV2Pair(underlying()).token1();
 
-      uint256 token0Amount;
+    uint256 toToken0 = remainingRewardBalance.div(2);
+    uint256 toToken1 = remainingRewardBalance.sub(toToken0);
 
-      if (uniswapRoutes[uniLPComponentToken0].length > 1) {
-        // if we need to liquidate the token0
-        IUniswapV2Router02(apeswapRouterV2).swapExactTokensForTokens(
-          toToken0,
-          amountOutMin,
-          uniswapRoutes[uniLPComponentToken0],
-          address(this),
-          block.timestamp
-        );
-        token0Amount = IERC20(uniLPComponentToken0).balanceOf(address(this));
-      } else {
-        // otherwise we assme token0 is the reward token itself
-        token0Amount = toToken0;
-      }
+    uint256 token0Amount;
 
-      uint256 token1Amount;
-
-      if (uniswapRoutes[uniLPComponentToken1].length > 1) {
-        // sell reward token to token1
-        IUniswapV2Router02(apeswapRouterV2).swapExactTokensForTokens(
-          toToken1,
-          amountOutMin,
-          uniswapRoutes[uniLPComponentToken1],
-          address(this),
-          block.timestamp
-        );
-        token1Amount = IERC20(uniLPComponentToken1).balanceOf(address(this));
-      } else {
-        token1Amount = toToken1;
-      }
-
-      // provide token1 and token2 to ape
-      IERC20(uniLPComponentToken0).safeApprove(apeswapRouterV2, 0);
-      IERC20(uniLPComponentToken0).safeApprove(apeswapRouterV2, token0Amount);
-
-      IERC20(uniLPComponentToken1).safeApprove(apeswapRouterV2, 0);
-      IERC20(uniLPComponentToken1).safeApprove(apeswapRouterV2, token1Amount);
-
-      // we provide liquidity to ape
-      uint256 liquidity;
-      (,,liquidity) = IUniswapV2Router02(apeswapRouterV2).addLiquidity(
-        uniLPComponentToken0,
-        uniLPComponentToken1,
-        token0Amount,
-        token1Amount,
-        1,  // we are willing to take whatever the pair gives us
-        1,  // we are willing to take whatever the pair gives us
-        address(this),
-        block.timestamp
-      );
-    } else {
+    if (uniswapRoutes[uniLPComponentToken0].length > 1) {
+      // if we need to liquidate the token0
       IUniswapV2Router02(apeswapRouterV2).swapExactTokensForTokens(
-        remainingRewardBalance,
+        toToken0,
         amountOutMin,
-        uniswapRoutes[underlying()],
+        uniswapRoutes[uniLPComponentToken0],
         address(this),
         block.timestamp
       );
+      token0Amount = IERC20(uniLPComponentToken0).balanceOf(address(this));
+    } else {
+      // otherwise we assme token0 is the reward token itself
+      token0Amount = toToken0;
     }
+
+    uint256 token1Amount;
+
+    if (uniswapRoutes[uniLPComponentToken1].length > 1) {
+      // sell reward token to token1
+      IUniswapV2Router02(apeswapRouterV2).swapExactTokensForTokens(
+        toToken1,
+        amountOutMin,
+        uniswapRoutes[uniLPComponentToken1],
+        address(this),
+        block.timestamp
+      );
+      token1Amount = IERC20(uniLPComponentToken1).balanceOf(address(this));
+    } else {
+      token1Amount = toToken1;
+    }
+
+    // provide token1 and token2 to ape
+    IERC20(uniLPComponentToken0).safeApprove(apeswapRouterV2, 0);
+    IERC20(uniLPComponentToken0).safeApprove(apeswapRouterV2, token0Amount);
+
+    IERC20(uniLPComponentToken1).safeApprove(apeswapRouterV2, 0);
+    IERC20(uniLPComponentToken1).safeApprove(apeswapRouterV2, token1Amount);
+
+    // we provide liquidity to ape
+    uint256 liquidity;
+    (,,liquidity) = IUniswapV2Router02(apeswapRouterV2).addLiquidity(
+      uniLPComponentToken0,
+      uniLPComponentToken1,
+      token0Amount,
+      token1Amount,
+      1,  // we are willing to take whatever the pair gives us
+      1,  // we are willing to take whatever the pair gives us
+      address(this),
+      block.timestamp
+    );
+
   }
 
   /*
@@ -330,7 +289,7 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
   }
 
   /**
-  * Can completely disable claiming UNI rewards and selling. Good for emergency withdraw in the
+  * Can completely disable claiming BANANA rewards and selling. Good for emergency withdraw in the
   * simplest possible way.
   */
   function setSell(bool s) public onlyGovernance {
@@ -338,7 +297,7 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
   }
 
   /**
-  * Sets the minimum amount of CRV needed to trigger a sale.
+  * Sets the minimum amount of reward needed to trigger a sale.
   */
   function setSellFloor(uint256 floor) public onlyGovernance {
     _setSellFloor(floor);
@@ -353,28 +312,11 @@ contract MiniApeV2Strategy is BaseUpgradeableStrategy {
     return getUint256(_POOLID_SLOT);
   }
 
-  // complexRewarder second reward
-  function _setSecondRewardToken(address _address) internal {
-    setAddress(_SECOND_REWARD_TOKEN_SLOT, _address);
-  }
-
-  function secondRewardToken() public view returns (address) {
-    return getAddress(_SECOND_REWARD_TOKEN_SLOT);
-  }
-
-  function isLpAsset() public view returns (bool) {
-    return getBoolean(_IS_LP_ASSET_SLOT);
-  }
-
   function finalizeUpgrade() external onlyGovernance {
     _finalizeUpgrade();
     // reset the liquidation paths
     // they need to be re-set manually
-    if (isLpAsset()) {
-      uniswapRoutes[IUniswapV2Pair(underlying()).token0()] = new address[](0);
-      uniswapRoutes[IUniswapV2Pair(underlying()).token1()] = new address[](0);
-    } else {
-      uniswapRoutes[underlying()] = new address[](0);
-    }
+    uniswapRoutes[IUniswapV2Pair(underlying()).token0()] = new address[](0);
+    uniswapRoutes[IUniswapV2Pair(underlying()).token1()] = new address[](0);
   }
 }
