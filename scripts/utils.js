@@ -8,7 +8,7 @@ async function getFeeData() {
     feeData.maxFeePerGas = 1000e9;
   }
   if (feeData.maxFeePerGas / 3 > 35e9) {
-    feeData.maxPriorityFeePerGas = feeData.maxFeePerGas / 3;
+    feeData.maxPriorityFeePerGas = Math.round(feeData.maxFeePerGas / 3);
     if (feeData.maxPriorityFeePerGas > 150e9) {
       feeData.maxPriorityFeePerGas = 150e9;
     }
