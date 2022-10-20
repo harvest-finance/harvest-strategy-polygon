@@ -129,10 +129,12 @@ contract MeshswapStrategy is BaseUpgradeableStrategy {
 
     address _rewardToken = rewardToken();
     uint256 rewardBalance = IERC20(_rewardToken).balanceOf(address(this));
+    if (rewardBalance <= 10e12) {
+      return;
+    }
     notifyProfitInRewardToken(rewardBalance);
     uint256 remainingRewardBalance = IERC20(_rewardToken).balanceOf(address(this));
-
-    if (remainingRewardBalance == 0) {
+    if (remainingRewardBalance <= 10e12) {
       return;
     }
 

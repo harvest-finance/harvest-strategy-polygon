@@ -6,19 +6,19 @@ const addresses = require("../test-config.js");
 const BigNumber = require("bignumber.js");
 const IERC20 = artifacts.require("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20");
 
-const Strategy = artifacts.require("MeshswapStrategyMainnet_WMATIC_MESH");
+const Strategy = artifacts.require("MeshswapStrategyMainnet_WMATIC_USDT");
 
 //This test was developed at blockNumber 34577850
 
 // Vanilla Mocha test. Increased compatibility with tools that integrate Mocha.
-describe("Mainnet Meshswap wMATIC-MESH", function() {
+describe("Mainnet Meshswap wMATIC-USDT", function() {
   let accounts;
 
   // external contracts
   let underlying;
 
   // external setup
-  let underlyingWhale = "0x5875200693CE41bC27442014eA49A68Ca75f2246";
+  let underlyingWhale = "0xC70f26184fc556bBbA9c3078ee35411e42E7B1ac";
 
   // parties in the protocol
   let governance;
@@ -33,7 +33,7 @@ describe("Mainnet Meshswap wMATIC-MESH", function() {
   let strategy;
 
   async function setupExternalContracts() {
-    underlying = await IERC20.at("0x07A7Ab21b582058B71d2AEe1b1719926E3451ADF");
+    underlying = await IERC20.at("0x24af68fF6e3501EAf8b52a9F7935225E524FE617");
     console.log("Fetching Underlying at: ", underlying.address);
   }
 
