@@ -17,7 +17,7 @@ contract VaultMigratable_balStMatic is Vault {
   address public constant __lpNew = address(0x8159462d255C1D24915CB51ec361F700174cD994);
   address public constant __governance = address(0xf00dD244228F51547f0563e60bCa65a30FBF5f7f);
   address public constant __bVault = address(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-  address public constant __newStrategy = address(0xEC7a197877f8d2dD23E3eC293Cea2146838f1E70);
+  address public constant __newStrategy = address(0x9674AdE8257BEeC0f8c6fbdEAE279EA92543D989);
 
   bytes32 public constant __poolIdOld = 0xaf5e0b5425de1f5a630a8cb5aa9d97b8141c908d000200000000000000000366;
   bytes32 public constant __poolIdNew = 0x8159462d255c1d24915cb51ec361f700174cd99400000000000000000000075d;

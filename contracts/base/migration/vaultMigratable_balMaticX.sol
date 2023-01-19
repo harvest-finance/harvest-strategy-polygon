@@ -17,7 +17,7 @@ contract VaultMigratable_balMaticX is Vault {
   address public constant __lpNew = address(0xb20fC01D21A50d2C734C4a1262B4404d41fA7BF0);
   address public constant __governance = address(0xf00dD244228F51547f0563e60bCa65a30FBF5f7f);
   address public constant __bVault = address(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
-  address public constant __newStrategy = address(0xEC7a197877f8d2dD23E3eC293Cea2146838f1E70);
+  address public constant __newStrategy = address(0x5A42FEDdD5e330AD857A17724543C5ef7FC7C9Cd);
 
   bytes32 public constant __poolIdOld = 0xc17636e36398602dd37bb5d1b3a9008c7629005f0002000000000000000004c4;
   bytes32 public constant __poolIdNew = 0xb20fc01d21a50d2c734c4a1262b4404d41fa7bf000000000000000000000075c;
