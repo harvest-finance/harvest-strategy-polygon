@@ -15,7 +15,7 @@ contract BalancerStrategyV3Mainnet_2EUR_agEUR is BalancerStrategyV3 {
     address underlying = address(0xa48D164F6eB0EDC68bd03B56fa59E12F24499aD1);
     address jeur = address(0x4e3Decbb3645551B8A19f0eA1678079FCB33fB4c);
     address bal = address(0x9a71012B13CA4d3D0Cdc72A177DF3ef03b0E76A3);
-    address gauge = address(0x0000000000000000000000000000000000000000);
+    address gauge = address(0x8c73C7A998F54e3A936885C752c9955c78A5Febb);
     BalancerStrategyV3.initializeBaseStrategy(
       _storage,
       underlying,
