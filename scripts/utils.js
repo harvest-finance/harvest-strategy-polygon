@@ -7,10 +7,10 @@ async function getFeeData() {
   if (feeData.maxFeePerGas > 1000e9) {
     feeData.maxFeePerGas = 1000e9;
   }
-  if (feeData.maxFeePerGas / 3 > 35e9) {
-    feeData.maxPriorityFeePerGas = Math.round(feeData.maxFeePerGas / 3);
-    if (feeData.maxPriorityFeePerGas > 150e9) {
-      feeData.maxPriorityFeePerGas = 150e9;
+  if (feeData.maxFeePerGas / 6 > 35e9) {
+    feeData.maxPriorityFeePerGas = Math.round(feeData.maxFeePerGas / 6);
+    if (feeData.maxPriorityFeePerGas > 100e9) {
+      feeData.maxPriorityFeePerGas = 100e9;
     }
   }
   return feeData;
@@ -31,7 +31,7 @@ async function type2Transaction(callFunction, ...params) {
     data: unsignedTx.data,
     maxFeePerGas: feeData.maxFeePerGas,
     maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
-    gasLimit: 7e6
+    gasLimit: 5e6
   });
   await tx.wait();
   return tx;

@@ -19,7 +19,7 @@ contract QuickGammaStrategy is BaseUpgradeableStrategy {
 
   address public constant quickRouter = address(0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff);
   address public constant sushiRouter = address(0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506);
-  address public constant uniProxy = address(0x8C8f7D348A568553819C4DaD401Ba6A68fa65924);
+  address public constant uniProxy = address(0xe0A61107E250f8B5B24bf272baBFCf638569830C);
   address public constant WMATIC = address(0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270);
   address public constant dQuick = address(0x958d208Cdf087843e9AD98d23823d32E17d723A1);
   address public constant quick = address(0xB5C064F955D8e7F38fE0460C556a72987494eE17);
@@ -168,7 +168,6 @@ contract QuickGammaStrategy is BaseUpgradeableStrategy {
         convertDQuickToQuick();
       }
       uint256 rewardBalance = IERC20(token).balanceOf(address(this));
-
       if (swapRoutes[token][_rewardToken].length < 2 || rewardBalance == 0) {
         continue;
       }
