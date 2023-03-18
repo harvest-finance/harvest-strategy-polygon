@@ -18,7 +18,7 @@ describe("Mainnet Quickswap-Gamma MATIC-ETH (narrow)", function() {
   let underlying;
 
   // external setup
-  let underlyingWhale = "0xfFc2809A8facF0aabD0717ECC492Ed3e3812E32C";
+  let underlyingWhale = "0x6bdf6D03328e04Cf4E5079eA347e0c413AfcdF63";
   let vaultAddr = "0x506337cc631726A21788B9fDFb6BE6292bA7A835";
 
   // parties in the protocol
