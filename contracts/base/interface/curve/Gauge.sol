@@ -19,3 +19,7 @@ interface VotingEscrow {
 interface Mintr {
     function mint(address) external;
 }
+
+interface ICurveLP {
+    function minter() external view returns(address);
+}
